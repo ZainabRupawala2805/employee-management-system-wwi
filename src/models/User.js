@@ -64,7 +64,15 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ["Active", "Inactive"],
             default: "Active"
-        }
+        },
+        availableLeaves: {
+            type: String,
+            required: false,
+        },
+        totalLeaves: {
+            type: String,
+            required: false,
+        },
     },
     {
         timestamps: true,

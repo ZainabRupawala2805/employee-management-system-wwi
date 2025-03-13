@@ -18,7 +18,7 @@ const generatePassword = (name) => {
     return password;
 }
 
-const registerUser = async ({ name, email, contact, dateOfJoining, role, reportBy }) => {
+const registerUser = async ({ name, email, contact, dateOfJoining, role, reportBy, availableLeaves }) => {
     const existingUser = await User.findOne({ email });
     // console.log(name);
     if (existingUser) {
@@ -44,7 +44,8 @@ const registerUser = async ({ name, email, contact, dateOfJoining, role, reportB
         password: hashPswd,
         dateOfJoining,
         role: roleData ? roleData._id : null,  // Store role as roleId
-        reportBy: reportByIds  // Store array of manager IDs 
+        reportBy: reportByIds,  // Store array of manager IDs 
+        availableLeaves
     })
     console.log(newUser);
 

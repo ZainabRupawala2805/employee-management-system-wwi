@@ -5,9 +5,9 @@ const CustomError = require('../errors');
 
 const register = async (req, res) => {
     try {
-        const { name, email, contact, dateOfJoining, role, reportBy } = req.body;
+        const { name, email, contact, dateOfJoining, role, reportBy, availableLeaves } = req.body;
 
-        if (!name || !email || !contact || !dateOfJoining || !role) {
+        if (!name || !email || !contact || !dateOfJoining || !role|| !availableLeaves) {
             throw new CustomError.BadRequestError("All Fields Are Mandatory");
         }
 
@@ -16,7 +16,7 @@ const register = async (req, res) => {
             throw new CustomError.BadRequestError("reportBy must be an array of names");
         }
 
-        const user = await registerUser({ name, email, contact, dateOfJoining, role, reportBy });
+        const user = await registerUser({ name, email, contact, dateOfJoining, role, reportBy, availableLeaves });
         console.log("user from control file: ", user);
 
         res.status(StatusCodes.CREATED).json({
