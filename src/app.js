@@ -31,17 +31,19 @@ const usersRoutes = require('./routes/usersRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const authenticateUser = require('./middlewares/authentication');
 const roleRoutes = require('./routes/roleRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
 
 // API Call
 app.use('/user', usersRoutes);
 app.use('/attendance', attendanceRoutes);
 app.use('/role', roleRoutes);
+app.use('/leave', leaveRoutes);
 
 
 const startApplication = async () => {
     try {
         await connectDB(process.env.mongoDbUrl);
-        const port = process.env.PORT || 6000;
+        const port = process.env.PORT || 5000;
         app.listen(port, () => {
             console.log(`Server is running at http://localhost:${port}`);
         });
