@@ -66,11 +66,11 @@ const userSchema = new mongoose.Schema(
             default: "Active"
         },
         availableLeaves: {
-            type: String,
+            type: Number,
             required: false,
         },
         totalLeaves: {
-            type: String,
+            type: Number,
             required: false,
         },
     },
