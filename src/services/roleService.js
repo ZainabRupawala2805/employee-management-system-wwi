@@ -12,7 +12,7 @@ class RoleService {
     }
 
     async getAllRoles() {
-        return await Role.find()  ;
+        return await Role.find();
     }
 }
 

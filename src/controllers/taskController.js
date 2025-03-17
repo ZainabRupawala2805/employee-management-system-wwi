@@ -60,7 +60,37 @@ const updateTask = async (req, res) => {
     }
 };
 
+const getTaskById = async (req, res) => {
+    try {
+        const taskId = req.params.id; // Get task ID from URL params
+        const task = await taskService.getTaskById(taskId);
+        res.status(200).json({
+            success: true,
+            message: "Task retrieved successfully",
+            data: task,
+        });
+    } catch (error) {
+        res.status(StatusCodes.OK).json({status: "fail", message: error.message});
+    }
+};
+
+// Controller to get all tasks
+const getAllTasks = async (req, res) => {
+    try {
+        const tasks = await taskService.getAllTasks();
+        res.status(200).json({
+            success: true,
+            message: "Tasks retrieved successfully",
+            data: tasks,
+        });
+    } catch (error) {
+        res.status(StatusCodes.OK).json({status: "fail", message: error.message});
+    }
+};
+
 module.exports = {
     createTask,
     updateTask,
+    getTaskById,
+    getAllTasks,
 };
