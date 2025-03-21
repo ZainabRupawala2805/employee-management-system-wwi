@@ -1,7 +1,9 @@
 const { createLeave, updateLeaveStatus, getAllLeaves } = require("../services/leaveService");
+const CustomError = require('../errors');
+const { StatusCodes } = require('http-status-codes');
 
 const createLeaveController = async (req, res) => {
-    const { userId, startDate, endDate, reason, leaveType } = req.body;
+    const { userId, startDate, endDate, reason, leaveType} = req.body;
 
     if (!userId || !startDate || !endDate || !reason || !leaveType) {
         return res.status(200).json({ message: "All fields are required" });
