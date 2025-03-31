@@ -31,11 +31,15 @@ const usersRoutes = require('./routes/usersRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const authenticateUser = require('./middlewares/authentication');
 const roleRoutes = require('./routes/roleRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
+const taskRoutes = require("./routes/taskRoutes");
 
 // API Call
 app.use('/user', usersRoutes);
 app.use('/attendance', attendanceRoutes);
 app.use('/role', roleRoutes);
+app.use('/leave', leaveRoutes);
+app.use('/task', taskRoutes);
 
 
 const startApplication = async () => {

@@ -10,6 +10,6 @@ router.get('/profile/:id', authenticateUser, fetchSingleUser)
 router.put('/update-profile/:userId', authenticateUser, updateUser)
 router.put('/update-password/:userId', authenticateUser, updateUserPassword)
 router.delete('/delete/:userId', authenticateUser, deleteUser)
-router.patch('/update-status', authenticateUser, updateStatus)
+router.put('/update-status', authenticateUser, updateStatus)
 
 module.exports = router;

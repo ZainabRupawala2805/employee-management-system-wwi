@@ -112,29 +112,43 @@ const markAbsent = async () => {
     try {
         const today = moment().format('YYYY-MM-DD');
 
-        // fetch all user's ID
-        const users = await User.find() // Fetch all users (only IDs)
+        const users = await User.find({}, { _id: 1, name: 1 });
+
         for (const user of users) {
-            // Check if attendance already exists for today
             const existingRecord = await Attendance.findOne({
-                userId: user.id,
+                userId: user._id,
                 date: today,
             });
 
             if (!existingRecord) {
-                // Mark user as absent if no record found..
-                await Attendance.create({
-                    userId: user.id,
-                    date: today,
-                    status: "Absent",
+                const approvedLeave = await Leave.findOne({
+                    userId: user._id,
+                    startDate: { $lte: today },
+                    endDate: { $gte: today },
+                    status: "Approved",   
                 });
-                console.log(`Marked ${user.name} as absent for ${today}`);
+
+                if (approvedLeave) {
+                    await Attendance.create({
+                        userId: user._id,
+                        date: today,
+                        status: "Leave",
+                    });
+                    console.log(`Marked ${user.name} as on leave for ${today}`);
+                } else {
+                    await Attendance.create({
+                        userId: user._id,
+                        date: today,
+                        status: "Absent",
+                    });
+                    console.log(`Marked ${user.name} as absent for ${today}`);
+                }
             }
         }
     } catch (error) {
         console.error("Error in scheduler: ", error);
     }
-}
+};
 
 // Schedule the function to run at 11 PM every day
 cron.schedule("0 23 * * *", async () => {

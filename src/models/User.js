@@ -64,7 +64,26 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ["Active", "Inactive"],
             default: "Active"
-        }
+        },
+        availableLeaves: {
+            type: Number,
+            default: function () {
+                // Calculate availableLeaves as the sum of sickLeave and paidLeave
+                return this.sickLeave + this.paidLeave;
+            },
+        },
+        totalLeaves: {
+            type: Number,
+            required: false,
+        },
+        sickLeave: {
+            type: Number,
+            required: true,
+        },
+        paidLeave: {
+            type: Number,
+            required: true,
+        },
     },
     {
         timestamps: true,
