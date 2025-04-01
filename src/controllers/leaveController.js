@@ -1,6 +1,8 @@
-const { createLeave, updateLeaveStatus, getAllLeaves } = require("../services/leaveService");
+const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById } = require("../services/leaveService");
 const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
+const Leave = require('../models/Leave')
+const mongoose = require("mongoose");
 
 const createLeaveController = async (req, res) => {
     const { userId, startDate, endDate, reason, leaveType} = req.body;
@@ -63,8 +65,86 @@ const getAllLeavesController = async (req, res) => {
     }
 };
 
+const getLeaveByIdController = async (req, res) => {
+    const { leaveId } = req.params;
+
+    try {
+        // Additional validation
+        if (!leaveId || !leaveId.trim()) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Leave ID is required'
+            });
+        }
+
+        const trimmedId = leaveId.trim();
+        
+        if (trimmedId.length !== 24 || !/^[0-9a-fA-F]+$/.test(trimmedId)) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Leave ID must be 24 hexadecimal characters'
+            });
+        }
+
+        const leave = await getLeaveById(trimmedId);
+
+        return res.status(200).json({
+            status: 'success',
+            data: leave
+        });
+
+    } catch (error) {
+        const statusCode = error.message.includes('not found') ? 404 : 500;
+        return res.status(statusCode).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+const getLeavesByUserIdController = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Validate ID format before proceeding
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                status: 'fail',
+                message: 'Invalid user ID format - must be 24-character hex string'
+            });
+        }
+
+        const leaves = await getLeavesByUserId(userId);
+
+        if (leaves.length === 0) {
+            return res.status(StatusCodes.OK).json({
+                status: 'success',
+                message: 'No leaves found for this user',
+                data: []
+            });
+        }
+
+        return res.status(StatusCodes.OK).json({
+            status: 'success',
+            count: leaves.length,
+            data: leaves
+        });
+    } catch (error) {
+        const statusCode = error.message.includes('not found') 
+            ? StatusCodes.NOT_FOUND 
+            : StatusCodes.INTERNAL_SERVER_ERROR;
+
+        return res.status(statusCode).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     createLeaveController,
     updateLeaveStatusController,
     getAllLeavesController, 
+    getLeaveByIdController,
+    getLeavesByUserIdController
 };

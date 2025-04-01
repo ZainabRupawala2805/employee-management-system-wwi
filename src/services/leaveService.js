@@ -1,5 +1,8 @@
 const Leave = require("../models/Leave");
 const User = require("../models/User");
+const CustomError = require('../errors');
+const { StatusCodes } = require('http-status-codes');
+const mongoose = require("mongoose");
 
 const createLeave = async (leaveData) => {
     try {
@@ -117,9 +120,75 @@ const getAllLeaves = async () => {
     }
 };
 
+const getLeaveById = async (leaveId) => {
+    try {
+        // Trim and validate the ID
+        const trimmedId = String(leaveId).trim();
+        
+        if (!mongoose.Types.ObjectId.isValid(trimmedId)) {
+            throw new Error('Invalid leave ID format');
+        }
+
+        const leaveObjectId = new mongoose.Types.ObjectId(trimmedId);
+        
+        const leave = await Leave.findById(leaveObjectId)
+            .populate({
+                path: 'userId',
+                select: 'name email role',
+                populate: {
+                    path: 'role',
+                    select: 'name'
+                }
+            });
+
+        if (!leave) {
+            throw new Error('Leave not found');
+        }
+
+        return leave;
+    } catch (error) {
+        console.error(`Error fetching leave ${leaveId}:`, error);
+        throw error;
+    }
+};
+const getLeavesByUserId = async (userId) => {
+    try {
+        // First validate the ID format
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            throw new Error('Invalid user ID format');
+        }
+
+        // Convert to ObjectId
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+
+        // Check if user exists
+        const user = await User.findById(userObjectId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Find leaves for this user
+        const leaves = await Leave.find({ userId: userObjectId })
+            .populate({
+                path: "userId",
+                select: "name email contact role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            })
+            .sort({ startDate: -1 });
+
+        return leaves;
+    } catch (error) {
+        throw error; // Let the controller handle it
+    }
+};
 
 module.exports = {
     createLeave,
     updateLeaveStatus,
-    getAllLeaves
+    getAllLeaves,
+    getLeaveById,
+    getLeavesByUserId
 };
