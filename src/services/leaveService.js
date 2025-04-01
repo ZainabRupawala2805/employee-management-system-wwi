@@ -63,7 +63,6 @@ const updateLeaveStatus = async (leaveId, status) => {
         // Check if the leave is being approved
         if (status === "Approved") {
 
-
             if (user.availableLeaves < daysDiff) {
                 throw new Error("Not enough leaves available");
             }
