@@ -12,6 +12,8 @@ const fetchUsersByRole = async (userId, role) => {
                 .populate("role", "name _id") // Get role name and ID
                 .populate("reportBy", "name _id")
                 .sort({ createdAt: -1 });
+            
+            return users;
         } else {
             // Validate userId before converting
             if (!mongoose.isValidObjectId(userId)) {

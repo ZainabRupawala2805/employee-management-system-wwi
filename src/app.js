@@ -45,7 +45,7 @@ app.use('/task', taskRoutes);
 const startApplication = async () => {
     try {
         await connectDB(process.env.mongoDbUrl);
-        const port = process.env.PORT || 5000;
+        const port = process.env.PORT || 6000;
         app.listen(port, () => {
             console.log(`Server is running at http://localhost:${port}`);
         });
