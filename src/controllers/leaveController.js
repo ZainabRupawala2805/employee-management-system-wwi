@@ -52,12 +52,13 @@ const getAllLeavesController = async (req, res) => {
             status: leave.status,
             leaveType: leave.leaveType,
             user: {
+                id: leave.userId._id,
                 name: leave.userId.name,
                 role: leave.userId.role.name,
             },
         }));
 
-        res.status(200).json({ message: "Leaves fetched successfully", leaves: formattedLeaves });
+        res.status(200).json({ status: "success", message: "Leaves fetched successfully", leaves: formattedLeaves });
     } catch (error) {
         res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
     }
