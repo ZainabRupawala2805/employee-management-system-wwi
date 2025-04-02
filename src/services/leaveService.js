@@ -120,6 +120,7 @@ const getAllLeaves = async () => {
     }
 };
 
+
 const getLeaveById = async (leaveId) => {
     try {
         // Trim and validate the ID
@@ -153,25 +154,24 @@ const getLeaveById = async (leaveId) => {
 };
 const getLeavesByUserId = async (userId) => {
     try {
-        // First validate the ID format
+        // Validate the user ID format
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            throw new Error('Invalid user ID format');
+            throw new Error("Invalid user ID format");
         }
 
-        // Convert to ObjectId
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
-        // Check if user exists
-        const user = await User.findById(userObjectId);
+        // Fetch the user details
+        const user = await User.findById(userObjectId).select("name email sickLeave paidLeave availableLeaves");
         if (!user) {
-            throw new Error('User not found');
+            throw new Error("User not found");
         }
 
-        // Find leaves for this user
+        // Fetch leaves associated with the user
         const leaves = await Leave.find({ userId: userObjectId })
             .populate({
                 path: "userId",
-                select: "name email contact role",
+                select: "name email role",
                 populate: {
                     path: "role",
                     select: "name",
@@ -179,16 +179,47 @@ const getLeavesByUserId = async (userId) => {
             })
             .sort({ startDate: -1 });
 
-        return leaves;
+        return { leaves, user };
     } catch (error) {
-        throw error; // Let the controller handle it
+        throw error;
     }
 };
 
+
+
+const getFilteredLeaves = async (userId, userRole, reportBy) => {
+    try {
+        let query = {};
+
+        if (userRole === "Founder") {
+            // Founder gets all leave records
+            query = {};
+        } else if (reportBy.length > 0) {
+            // If the user has a reportBy list, fetch leaves of those users
+            query = { userId: { $in: reportBy } };
+        } else {
+            // If no reportBy users, fetch only the current user's leaves
+            query = { userId };
+        }
+
+        const leaves = await Leave.find(query)
+            .populate({
+                path: "userId",
+                select: "name role",
+                populate: { path: "role", select: "name" },
+            })
+            .sort({ startDate: -1 });
+
+        return leaves;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
 module.exports = {
     createLeave,
     updateLeaveStatus,
     getAllLeaves,
     getLeaveById,
-    getLeavesByUserId
+    getLeavesByUserId,
+    getFilteredLeaves
 };
