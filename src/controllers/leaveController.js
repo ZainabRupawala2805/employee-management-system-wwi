@@ -1,4 +1,4 @@
-const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves } = require("../services/leaveService");
+const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails } = require("../services/leaveService");
 const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
 const Leave = require('../models/Leave')
@@ -7,42 +7,65 @@ const User = require('../models/User')
 
 
 const createLeaveController = async (req, res) => {
-    const { userId, startDate, endDate, reason, leaveType} = req.body;
+  try {
+      const { startDate, endDate, reason, leaveType, userId, halfDayDates } = req.body;
 
-    if (!userId || !startDate || !endDate || !reason || !leaveType) {
-        return res.status(200).json({ message: "All fields are required" });
-    }
+      if (!startDate || !endDate || !reason || !leaveType) {
+          return res.status(400).json({ status: "fail", message: "All fields are required" });
+      }
 
-    try {
-        const leave = await createLeave({
-            userId,
-            startDate,
-            endDate,
-            reason,
-            leaveType,
-        });
-        res.status(201).json({ message: "Leave created successfully", leave });
-    } catch (error) {
-         res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
-    }
+      // Convert to Date objects
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (start > end) {
+          return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
+      }
+
+      // Generate leaveDetails object
+      let leaveDetails = generateLeaveDetails(start, end);
+
+      // If any half-day leaves are specified, update the leaveDetails object
+      if (halfDayDates && typeof halfDayDates === 'object') {
+          Object.entries(halfDayDates).forEach(([date, session]) => {
+              if (leaveDetails[date]) {
+                  leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
+              }
+          });
+      }
+
+      const leave = await Leave.create({
+          userId,
+          startDate: start,
+          endDate: end,
+          reason,
+          status: "Pending",
+          leaveType,
+          leaveDetails
+      });
+
+      return res.status(201).json({ status: "success", data: leave });
+
+  } catch (error) {
+      return res.status(500).json({ status: "error", message: error.message });
+  }
 };
 
 const updateLeaveStatusController = async (req, res) => {
-    const { leaveId } = req.params;
-    const { status } = req.body;
+  const { leaveId } = req.params;
+  const { status } = req.body;
 
-    if (!["Approved", "Rejected"].includes(status)) {
-        return res.status(200).json({ message: "Invalid status. Must be 'Approved' or 'Rejected'" });
-    }
+  if (!["Approved", "Rejected"].includes(status)) {
+      return res.status(200).json({ message: "Invalid status. Must be 'Approved' or 'Rejected'" });
+  }
 
-    try {
-        const updatedLeave = await updateLeaveStatus(leaveId, status);
-        res.status(200).json({ message: "Leave status updated successfully", leave: updatedLeave });
-    } catch (error) {
-         res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
-    }
+  try {
+      const updatedLeave = await updateLeaveStatus(leaveId, status);
+      res.status(200).json({ message: "Leave status updated successfully", leave: updatedLeave });
+  } catch (error) {
+      res.status(200).json({ status: 'fail', message: error.message });
+  }
 };
-
 
 const getAllLeavesController = async (req, res) => {
   try {
@@ -165,34 +188,30 @@ const getLeavesByUserIdController = async (req, res) => {
 
 const getAllFilteredLeavesController = async (req, res) => {
   try {
-      const { userId } = req.user; // Extracting user ID from request
-      const user = await User.findById(userId).populate("role");
+      const { role, id } = req.user; // Extract user role and ID from token
 
-      if (!user) {
-          return res.status(StatusCodes.UNAUTHORIZED).json({
-              status: "fail",
-              message: "User not found",
-          });
+      let leaves;
+
+      if (role === "Founder") {
+          leaves = await Leave.find().populate("userId", "name email role");
+      } else {
+          const user = await User.findById(id).select("reportBy");
+
+          if (!user) {
+              return res.status(404).json({ status: "fail", message: "User not found" });
+          }
+
+          let userIdsToFetch = user.reportBy.length > 0 ? user.reportBy : [id];
+          leaves = await Leave.find({ userId: { $in: userIdsToFetch } }).populate("userId", "name email role");
       }
 
-      const userRole = user.role.name; // Extract role name
-      const reportBy = user.reportBy || []; // Get users reporting to this user
-
-      const leaves = await getFilteredLeaves(userId, userRole, reportBy);
-
-      res.status(StatusCodes.OK).json({
-          status: "success",
-          message: "Leaves fetched successfully",
-          leaves,
-      });
+      return res.status(200).json({ status: "success", count: leaves.length, data: leaves });
 
   } catch (error) {
-      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-          status: "fail",
-          message: error.message,
-      });
+      return res.status(500).json({ status: "error", message: error.message });
   }
 };
+
 
 module.exports = {
     createLeaveController,

@@ -5,7 +5,7 @@ const authenticate = require("../middlewares/authentication");
 
 const router = express.Router();
 
-router.post("/leave-request",authenticateUser, createLeaveController);
+router.post("/leave-request", createLeaveController);
 router.patch("/status/:leaveId",authenticateUser, updateLeaveStatusController);
 router.get("/get-all-leaves",authenticateUser, getAllLeavesController);
 router.get('/get-by-id/:leaveId', getLeaveByIdController);

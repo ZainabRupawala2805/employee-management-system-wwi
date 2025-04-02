@@ -42,6 +42,20 @@ const createLeave = async (leaveData) => {
     }
 };
 
+const generateLeaveDetails = (startDate, endDate) => {
+    let details = {};
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+        const formattedDate = currentDate.toISOString().split("T")[0]; // YYYY-MM-DD format
+        details[formattedDate] = "Full Day"; // Default to Full Day
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return details;
+};
+
+
 
 
 const updateLeaveStatus = async (leaveId, status) => {
@@ -59,30 +73,35 @@ const updateLeaveStatus = async (leaveId, status) => {
             throw new Error("User not found");
         }
 
-        // Calculate the number of days between startDate and endDate
-        const timeDiff = leave.endDate - leave.startDate;
-        const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+        // Calculate the total leave days
+        let totalDays = 0;
+
+        Object.values(leave.leaveDetails).forEach(dayType => {
+            if (dayType === "Full Day") {
+                totalDays += 1;
+            } else if (dayType === "First Half" || dayType === "Second Half") {
+                totalDays += 0.5;
+            }
+        });
 
         // Check if the leave is being approved
         if (status === "Approved") {
-
-
-            if (user.availableLeaves < daysDiff) {
+            if (user.availableLeaves < totalDays) {
                 throw new Error("Not enough leaves available");
             }
             
-            user.availableLeaves -= daysDiff;
+            user.availableLeaves -= totalDays;
 
             if (leave.leaveType === "Sick") {
-                if (user.sickLeave < daysDiff) {
+                if (user.sickLeave < totalDays) {
                     throw new Error("Not enough sick leaves available");
                 }
-                user.sickLeave -= daysDiff;
+                user.sickLeave -= totalDays;
             } else if (leave.leaveType === "Paid") {
-                if (user.paidLeave < daysDiff) {
+                if (user.paidLeave < totalDays) {
                     throw new Error("Not enough paid leaves available");
                 }
-                user.paidLeave -= daysDiff;
+                user.paidLeave -= totalDays;
             } else {
                 throw new Error("Invalid leave type");
             }
@@ -221,5 +240,6 @@ module.exports = {
     getAllLeaves,
     getLeaveById,
     getLeavesByUserId,
-    getFilteredLeaves
+    getFilteredLeaves,
+    generateLeaveDetails
 };
