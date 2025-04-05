@@ -155,19 +155,17 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
             return res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "No leaves found for this user",
-                leaves: [
-                    {
-                        user: {
-                            name: user.name,
-                            email: user.email,
-                            sickLeave: user.sickLeave,
-                            paidLeave: user.paidLeave,
-                            unpaidLeave: user.unpaidLeave,
-                            availableLeaves: user.availableLeaves,
-                        },
-                        data: []
-                    }
-                ]
+                leaves: {
+                    user: {
+                        name: user.name,
+                        email: user.email,
+                        sickLeave: user.sickLeave,
+                        paidLeave: user.paidLeave,
+                        unpaidLeave: user.unpaidLeave,
+                        availableLeaves: user.availableLeaves,
+                    },
+                    data: []
+                }
             });
         }
 
