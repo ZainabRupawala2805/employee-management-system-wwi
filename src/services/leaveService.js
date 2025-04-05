@@ -4,43 +4,43 @@ const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
 const mongoose = require("mongoose");
 
-const createLeave = async (leaveData) => {
-    try {
-        const { userId, startDate, endDate, reason, leaveType } = leaveData;
+// const createLeave = async (leaveData) => {
+//     try {
+//         const { userId, startDate, endDate, reason, leaveType } = leaveData;
 
-        // Fetch the user to check available leaves
-        const user = await User.findById(userId);
+//         // Fetch the user to check available leaves
+//         const user = await User.findById(userId);
 
-        if (!user) {
-            throw new Error("User not found");
-        }
+//         if (!user) {
+//             throw new Error("User not found");
+//         }
 
         
-        const timeDiff = new Date(endDate) - new Date(startDate);
-        const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+//         const timeDiff = new Date(endDate) - new Date(startDate);
+//         const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
 
-        // Check if the user has enough leaves based on leaveType
-        if (leaveType === "Sick") {
-            if (user.sickLeave < daysDiff) {
-                throw new Error("Not enough sick leaves available");
-            }
-        } else if (leaveType === "Paid") {
-            if (user.paidLeave < daysDiff) {
-                throw new Error("Not enough paid leaves available");
-            }
-        } else {
-            throw new Error("Invalid leave type");
-        }
+//         // Check if the user has enough leaves based on leaveType
+//         if (leaveType === "Sick") {
+//             if (user.sickLeave < daysDiff) {
+//                 throw new Error("Not enough sick leaves available");
+//             }
+//         } else if (leaveType === "Paid") {
+//             if (user.paidLeave < daysDiff) {
+//                 throw new Error("Not enough paid leaves available");
+//             }
+//         } else {
+//             throw new Error("Invalid leave type");
+//         }
 
-        // Create the leave
-        const leave = new Leave(leaveData);
-        await leave.save();
+//         // Create the leave
+//         const leave = new Leave(leaveData);
+//         await leave.save();
 
-        return leave;
-    } catch (error) {
-        throw new Error(error.message);
-    }
-};
+//         return leave;
+//     } catch (error) {
+//         throw new Error(error.message);
+//     }
+// };
 
 const generateLeaveDetails = (startDate, endDate) => {
     let details = {};
@@ -120,24 +120,24 @@ const updateLeaveStatus = async (leaveId, status) => {
     }
 };
 
-const getAllLeaves = async () => {
-    try {
-        const leaves = await Leave.find()
-            .populate({
-                path: "userId",
-                select: "name role", 
-                populate: {
-                    path: "role", 
-                    select: "name", 
-                },
-            })
-            .exec();
+// const getAllLeaves = async () => {
+//     try {
+//         const leaves = await Leave.find()
+//             .populate({
+//                 path: "userId",
+//                 select: "name role", 
+//                 populate: {
+//                     path: "role", 
+//                     select: "name", 
+//                 },
+//             })
+//             .exec();
 
-        return leaves;
-    } catch (error) {
-        throw new Error(error.message);
-    }
-};
+//         return leaves;
+//     } catch (error) {
+//         throw new Error(error.message);
+//     }
+// };
 
 
 const getLeaveById = async (leaveId) => {
@@ -284,9 +284,7 @@ const updateLeave = async (leaveId, updateData) => {
     }
 };
 module.exports = {
-    createLeave,
     updateLeaveStatus,
-    getAllLeaves,
     getLeaveById,
     getLeavesByUserId,
     getFilteredLeaves,

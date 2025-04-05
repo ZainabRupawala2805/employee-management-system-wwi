@@ -131,7 +131,7 @@ const getUserById = async (userId) => {
 };
 
 const updateUserService = async (userId, updateFields) => {
-    const { name, email, contact, dateOfJoining, reportBy, role } = updateFields;
+    const { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role } = updateFields;
 
     try {
         // Ensure userId is a valid ObjectId
@@ -163,6 +163,8 @@ const updateUserService = async (userId, updateFields) => {
                 email,
                 contact,
                 dateOfJoining,
+                sickLeave, 
+                paidLeave, 
                 reportBy: newreportByIds, // Directly store the array of IDs
                 role: roleData._id
             },

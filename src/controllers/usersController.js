@@ -104,7 +104,7 @@ const updateUser = async (req, res) => {
         }
 
         // Extract fields to update
-        const { name, email, contact, dateOfJoining, reportBy, role } = req.body;
+        const { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role } = req.body;
 
         if (!name || !contact || !email || !dateOfJoining || !role) {
             return res.status(StatusCodes.OK).json({
@@ -118,7 +118,7 @@ const updateUser = async (req, res) => {
         }
 
         // Call the service function to update user
-        const updatedUser = await updateUserService(userId, { name, email, contact, dateOfJoining, reportBy, role });
+        const updatedUser = await updateUserService(userId, { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role });
 
         if (!updatedUser) {
             return res.status(StatusCodes.OK).json({

@@ -1,4 +1,4 @@
-const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails, updateLeave } = require("../services/leaveService");
+const { updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails, updateLeave } = require("../services/leaveService");
 const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
 const Leave = require('../models/Leave')

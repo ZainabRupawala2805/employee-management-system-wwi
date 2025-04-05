@@ -71,10 +71,6 @@ const userSchema = new mongoose.Schema(
                 return this.sickLeave + this.paidLeave;
             },
         },
-        totalLeaves: {
-            type: Number,
-            required: false,
-        },
         sickLeave: {
             type: Number,
             required: true,
