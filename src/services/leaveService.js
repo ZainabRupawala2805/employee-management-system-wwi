@@ -154,11 +154,11 @@ const getLeaveById = async (leaveId) => {
         const leave = await Leave.findById(leaveObjectId)
             .populate({
                 path: 'userId',
-                select: 'name email role',
-                populate: {
-                    path: 'role',
-                    select: 'name'
-                }
+                select: 'name',
+                // populate: {
+                //     path: 'role',
+                //     select: 'name'
+                // }
             });
 
         if (!leave) {
@@ -190,11 +190,11 @@ const getLeavesByUserId = async (userId) => {
         const leaves = await Leave.find({ userId: userObjectId })
             .populate({
                 path: "userId",
-                select: "name email role",
-                populate: {
-                    path: "role",
-                    select: "name",
-                },
+                select: "name",
+                // populate: {
+                //     path: "role",
+                //     select: "name",
+                // },
             })
             .sort({ startDate: -1 });
 
@@ -224,8 +224,8 @@ const getFilteredLeaves = async (userId, userRole, reportBy) => {
         const leaves = await Leave.find(query)
             .populate({
                 path: "userId",
-                select: "name role",
-                populate: { path: "role", select: "name" },
+                select: "name",
+                // populate: { path: "role", select: "name" },
             })
             .sort({ startDate: -1 });
 

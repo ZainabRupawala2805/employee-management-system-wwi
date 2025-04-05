@@ -19,7 +19,7 @@ const createLeaveController = async (req, res) => {
         const end = new Date(endDate);
 
         if (start > end) {
-            return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
+            return res.status(StatusCodes.OK).json({ status: "fail", message: "Start date cannot be after end date" });
         }
 
         // Generate leaveDetails object
@@ -44,10 +44,10 @@ const createLeaveController = async (req, res) => {
             leaveDetails
         });
 
-        return res.status(201).json({ status: "success", leaves: leave });
+        return res.status(StatusCodes.OK).json({ status: "success", leaves: leave });
 
     } catch (error) {
-        return res.status(500).json({ status: "error", message: error.message });
+        return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
 
@@ -56,14 +56,14 @@ const updateLeaveStatusController = async (req, res) => {
     const { status } = req.body;
 
     if (!["Approved", "Rejected"].includes(status)) {
-        return res.status(200).json({ message: "Invalid status. Must be 'Approved' or 'Rejected'" });
+        return res.status(StatusCodes.OK).json({ status: "fail" , message: "Invalid status. Must be 'Approved' or 'Rejected'" });
     }
 
     try {
         const updatedLeave = await updateLeaveStatus(leaveId, status);
-        res.status(200).json({ message: "Leave status updated successfully", leave: updatedLeave });
+        res.status(StatusCodes.OK).json({ status: "success", message: "Leave status updated successfully", leaves: updatedLeave });
     } catch (error) {
-        res.status(200).json({ status: 'fail', message: error.message });
+        res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
     }
 };
 
@@ -98,7 +98,7 @@ const getLeaveByIdController = async (req, res) => {
     try {
         // Additional validation
         if (!leaveId || !leaveId.trim()) {
-            return res.status(400).json({
+            return res.status(StatusCodes.OK).json({
                 status: 'fail',
                 message: 'Leave ID is required'
             });
@@ -107,7 +107,7 @@ const getLeaveByIdController = async (req, res) => {
         const trimmedId = leaveId.trim();
 
         if (trimmedId.length !== 24 || !/^[0-9a-fA-F]+$/.test(trimmedId)) {
-            return res.status(400).json({
+            return res.status(StatusCodes.OK).json({
                 status: 'fail',
                 message: 'Leave ID must be 24 hexadecimal characters'
             });
@@ -115,15 +115,15 @@ const getLeaveByIdController = async (req, res) => {
 
         const leave = await getLeaveById(trimmedId);
 
-        return res.status(200).json({
+        return res.status(StatusCodes.OK).json({
             status: 'success',
-            data: leave
+            leaves: leave
         });
 
     } catch (error) {
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        return res.status(statusCode).json({
-            status: 'error',
+        // const statusCode = error.message.includes('not found') ? 404 : 500;
+        return res.status(StatusCodes.OK).json({
+            status: 'fail',
             message: error.message
         });
     }
@@ -135,7 +135,7 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
     try {
         // Validate the userId format
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
+            return res.status(StatusCodes.OK).json({
                 status: "fail",
                 message: "Invalid user ID format - must be a 24-character hex string",
             });
@@ -145,7 +145,7 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
         const { leaves, user } = await getLeavesByUserId(userId);
 
         if (!user) {
-            return res.status(StatusCodes.NOT_FOUND).json({
+            return res.status(StatusCodes.OK).json({
                 status: "fail",
                 message: "User not found",
             });
@@ -158,7 +158,6 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
                 leaves: {
                     user: {
                         name: user.name,
-                        email: user.email,
                         sickLeave: user.sickLeave,
                         paidLeave: user.paidLeave,
                         unpaidLeave: user.unpaidLeave,
@@ -175,7 +174,6 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
             leaves: {
                 user: {
                     name: user.name,
-                    email: user.email,
                     sickLeave: user.sickLeave,
                     paidLeave: user.paidLeave,
                     unpaidLeave: user.unpaidLeave,
@@ -185,8 +183,8 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
             }
         });
     } catch (error) {
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            status: "error",
+        return res.status(StatusCodes.OK).json({
+            status: "fail",
             message: error.message,
         });
     }
@@ -206,17 +204,17 @@ const getAllFilteredLeavesController = async (req, res) => {
             console.log(user);
 
             if (!user) {
-                return res.status(404).json({ status: "fail", message: "User not found" });
+                return res.status(StatusCodes.OK).json({ status: "fail", message: "User not found" });
             }
 
             let userIdsToFetch = user.reportBy.length > 0 ? user.reportBy : [id];
             leaves = await Leave.find({ userId: { $in: userIdsToFetch } }).populate("userId", "name email role");
         }
 
-        return res.status(200).json({ status: "success", count: leaves.length, leaves: leaves, message: "Leaves fetched successfully" });
+        return res.status(StatusCodes.OK).json({ status: "success", count: leaves.length, leaves: leaves, message: "Leaves fetched successfully" });
 
     } catch (error) {
-        return res.status(500).json({ status: "error", message: error.message });
+        return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
 
