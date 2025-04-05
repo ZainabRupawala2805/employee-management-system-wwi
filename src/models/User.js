@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
             default: null
-        }], // Manager ID | Updating it to array for multiple users entry
+        }],
         status: {
             type: String,
             enum: ["Active", "Inactive"],
@@ -68,7 +68,6 @@ const userSchema = new mongoose.Schema(
         availableLeaves: {
             type: Number,
             default: function () {
-                // Calculate availableLeaves as the sum of sickLeave and paidLeave
                 return this.sickLeave + this.paidLeave;
             },
         },
@@ -79,6 +78,10 @@ const userSchema = new mongoose.Schema(
         paidLeave: {
             type: Number,
             required: true,
+        },
+        unpaidLeave:{
+            type: Number,
+            required: false
         }
     },
     {

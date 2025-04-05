@@ -30,6 +30,10 @@ const leaveSchema = new mongoose.Schema(
             enum: ["Paid", "Sick", "Unpaid", "Select"],
             default: "Select"
         },
+        leaveDetails: {
+            type: Object, 
+            required: true,
+        },
     },
     {
         timestamps: true,
