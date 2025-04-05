@@ -1,5 +1,5 @@
 const express = require("express");
-const { createLeaveController, updateLeaveStatusController, getAllLeavesController, getLeaveByIdController, getLeavesByUserIdController, getAllFilteredLeavesController } = require("../controllers/leaveController");
+const { createLeaveController, updateLeaveStatusController, getAllLeavesController, getLeaveByIdController, getLeavesByUserIdController, getAllFilteredLeavesController, updateLeaveController } = require("../controllers/leaveController");
 const authenticateUser = require("../middlewares/authentication");
 const authenticate = require("../middlewares/authentication");
 
@@ -11,6 +11,6 @@ router.get("/get-all-leaves",authenticateUser, getAllLeavesController);
 router.get('/get-by-id/:leaveId', getLeaveByIdController);
 router.get('/get-by-userid/:userId', getLeavesByUserIdController);
 router.get('/get-filtered', authenticateUser, getAllFilteredLeavesController)
-
+router.patch('/update/:leaveId', updateLeaveController);
 
 module.exports = router;

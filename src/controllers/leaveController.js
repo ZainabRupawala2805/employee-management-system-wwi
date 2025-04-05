@@ -1,4 +1,4 @@
-const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails } = require("../services/leaveService");
+const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails, updateLeave } = require("../services/leaveService");
 const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
 const Leave = require('../models/Leave')
@@ -8,9 +8,9 @@ const User = require('../models/User')
 
 const createLeaveController = async (req, res) => {
   try {
-      const { startDate, endDate, reason, leaveType, userId, halfDayDates } = req.body;
+      const { startDate, reason, leaveType, userId, halfDayDates } = req.body;
 
-      if (!startDate || !endDate || !reason || !leaveType) {
+      if (!startDate || !reason || !leaveType) {
           return res.status(400).json({ status: "fail", message: "All fields are required" });
       }
 
@@ -213,11 +213,48 @@ const getAllFilteredLeavesController = async (req, res) => {
 };
 
 
+const updateLeaveController = async (req, res) => {
+    const { leaveId } = req.params;
+    const updateData = req.body;
+
+    try {
+        // Validate input
+        if (!leaveId || !mongoose.Types.ObjectId.isValid(leaveId)) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                status: 'fail',
+                message: 'Please provide a valid leave ID'
+            });
+        }
+
+        // Remove restricted fields
+        delete updateData.status; // Status should be updated via updateLeaveStatus
+        delete updateData.userId; // Cannot change which user the leave belongs to
+
+        // Update the leave
+        const updatedLeave = await updateLeave(leaveId, updateData);
+
+        return res.status(StatusCodes.OK).json({
+            status: 'success',
+            data: updatedLeave
+        });
+
+    } catch (error) {
+        const statusCode = error.message.includes('not found') ? 
+            StatusCodes.NOT_FOUND : StatusCodes.BAD_REQUEST;
+            
+        return res.status(statusCode).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     createLeaveController,
     updateLeaveStatusController,
     getAllLeavesController, 
     getLeaveByIdController,
     getLeavesByUserIdController,
-    getAllFilteredLeavesController
+    getAllFilteredLeavesController,
+    updateLeaveController
 };

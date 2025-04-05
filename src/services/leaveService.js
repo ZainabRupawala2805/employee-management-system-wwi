@@ -234,6 +234,55 @@ const getFilteredLeaves = async (userId, userRole, reportBy) => {
         throw new Error(error.message);
     }
 };
+
+const updateLeave = async (leaveId, updateData) => {
+    try {
+        // Validate leave ID
+        if (!mongoose.Types.ObjectId.isValid(leaveId)) {
+            throw new Error('Invalid leave ID format');
+        }
+
+        // Check if leave exists
+        const existingLeave = await Leave.findById(leaveId);
+        if (!existingLeave) {
+            throw new Error('Leave not found');
+        }
+
+        // Prevent status updates through this endpoint (use updateLeaveStatus for that)
+        if (updateData.status && updateData.status !== existingLeave.status) {
+            throw new Error('Use the updateLeaveStatus endpoint to change leave status');
+        }
+
+        // Calculate days if dates are being updated
+        if (updateData.startDate || updateData.endDate) {
+            const startDate = updateData.startDate || existingLeave.startDate;
+            const endDate = updateData.endDate || existingLeave.endDate;
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                throw new Error('Start date cannot be after end date');
+            }
+
+            // Regenerate leaveDetails if dates change
+            if (updateData.startDate || updateData.endDate) {
+                updateData.leaveDetails = generateLeaveDetails(
+                    new Date(startDate),
+                    new Date(endDate)
+                );
+            }
+        }
+
+        // Update the leave
+        const updatedLeave = await Leave.findByIdAndUpdate(
+            leaveId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).populate('userId', 'name email role availableLeaves sickLeave paidLeave unpaidLeave');
+
+        return updatedLeave;
+    } catch (error) {
+        throw error;
+    }
+};
 module.exports = {
     createLeave,
     updateLeaveStatus,
@@ -241,5 +290,6 @@ module.exports = {
     getLeaveById,
     getLeavesByUserId,
     getFilteredLeaves,
-    generateLeaveDetails
+    generateLeaveDetails,
+    updateLeave
 };
