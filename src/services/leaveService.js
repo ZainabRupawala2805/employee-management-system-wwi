@@ -73,6 +73,12 @@ const updateLeaveStatus = async (leaveId, status) => {
             throw new Error("User not found");
         }
 
+        // Ensure numeric fields are valid numbers
+        user.availableLeaves = Number(user.availableLeaves) || 0;
+        user.paidLeave = Number(user.paidLeave) || 0;
+        user.sickLeave = Number(user.sickLeave) || 0;
+        user.totalLeaves = Number(user.totalLeaves) || 0;
+
         // Calculate the total leave days
         let totalDays = 0;
 
@@ -86,29 +92,40 @@ const updateLeaveStatus = async (leaveId, status) => {
 
         // Check if the leave is being approved
         if (status === "Approved") {
-            // For unpaid leaves, no need to check balances
-            if (leave.leaveType !== "Unpaid") {
-                if (user.availableLeaves < totalDays) {
-                    throw new Error("Not enough leaves available");
-                }
-                
-                user.availableLeaves -= totalDays;
-
-                if (leave.leaveType === "Sick") {
-                    if (user.sickLeave < totalDays) {
-                        throw new Error("Not enough sick leaves available");
-                    }
-                    user.sickLeave -= totalDays;
-                } else if (leave.leaveType === "Paid") {
+            // Handle different leave types
+            switch (leave.leaveType) {
+                case "Paid":
                     if (user.paidLeave < totalDays) {
                         throw new Error("Not enough paid leaves available");
                     }
+                    if (user.availableLeaves < totalDays) {
+                        throw new Error("Not enough available leaves");
+                    }
                     user.paidLeave -= totalDays;
-                }
+                    user.availableLeaves -= totalDays;
+                    break;
+
+                case "Sick":
+                    if (user.sickLeave < totalDays) {
+                        throw new Error("Not enough sick leaves available");
+                    }
+                    if (user.availableLeaves < totalDays) {
+                        throw new Error("Not enough available leaves");
+                    }
+                    user.sickLeave -= totalDays;
+                    user.availableLeaves -= totalDays;
+                    break;
+
+                case "Unpaid":
+                    // No deductions for unpaid leaves
+                    break;
+
+                default:
+                    throw new Error("Invalid leave type");
             }
 
             // Update totalLeaves for all leave types (including unpaid)
-            user.totalLeaves = (user.totalLeaves || 0) + totalDays;
+            user.totalLeaves += totalDays;
             
             // Save the updated user
             await user.save();
@@ -123,6 +140,7 @@ const updateLeaveStatus = async (leaveId, status) => {
         throw new Error(error.message);
     }
 };
+
 
 // const getAllLeaves = async () => {
 //     try {
