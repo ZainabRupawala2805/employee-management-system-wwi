@@ -54,43 +54,73 @@ const createLeaveController = async (req, res) => {
     }
   };
 
-const updateLeaveStatusController = async (req, res) => {
-  const { leaveId } = req.params;
-  const { status } = req.body;
+  const updateLeaveStatusController = async (req, res) => {
+    const { leaveId } = req.params;
+    const { status } = req.body;
 
-  if (!["Approved", "Rejected"].includes(status)) {
-      return res.status(200).json({ message: "Invalid status. Must be 'Approved' or 'Rejected'" });
-  }
+    if (!["Approved", "Rejected"].includes(status)) {
+        return res.status(400).json({ 
+            status: "fail", 
+            message: "Invalid status. Must be 'Approved' or 'Rejected'" 
+        });
+    }
 
-  try {
-      const updatedLeave = await updateLeaveStatus(leaveId, status);
-      res.status(200).json({ message: "Leave status updated successfully", leave: updatedLeave });
-  } catch (error) {
-      res.status(200).json({ status: 'fail', message: error.message });
-  }
+    try {
+        const updatedLeave = await updateLeaveStatus(leaveId, status);
+        
+        // Populate additional user data if needed
+        const populatedLeave = await Leave.findById(updatedLeave._id)
+            .populate({
+                path: 'userId',
+                select: '-password',
+                populate: {
+                    path: 'role',
+                    select: 'name permissions'
+                }
+            });
+
+        res.status(200).json({ 
+            status: "success",
+            data: {
+                leave: populatedLeave,
+                user: populatedLeave.userId
+            }
+        });
+    } catch (error) {
+        res.status(400).json({ 
+            status: 'fail', 
+            message: error.message 
+        });
+    }
 };
 
 const getAllLeavesController = async (req, res) => {
-  try {
-      const leaves = await getAllLeaves();
+    try {
+        const leaves = await Leave.find()
+            .populate({
+                path: "userId",
+                select: "-password",
+                populate: {
+                    path: "role",
+                    select: "name permissions"
+                }
+            })
+            .sort({ createdAt: -1 });
 
-      const formattedLeaves = leaves.map((leave) => ({
-          _id: leave._id,
-          startDate: leave.startDate,
-          endDate: leave.endDate,
-          reason: leave.reason,
-          status: leave.status,
-          leaveType: leave.leaveType,
-          user: {
-              name: leave.userId.name,
-              role: leave.userId.role.name,
-          },
-      }));
-
-      res.status(200).json({ message: "Leaves fetched successfully", leaves: formattedLeaves });
-  } catch (error) {
-      res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
-  }
+        res.status(200).json({ 
+            status: "success",
+            count: leaves.length,
+            data: leaves.map(leave => ({
+                leave,
+                user: leave.userId
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
+        });
+    }
 };
 
 
@@ -219,34 +249,38 @@ const getAllFilteredLeavesController = async (req, res) => {
 const updateLeaveController = async (req, res) => {
     const { leaveId } = req.params;
     const updateData = req.body;
-    const file = req.file; // Get uploaded file
+    const file = req.file;
 
     try {
-        // Validate input
-        if (!leaveId || !mongoose.Types.ObjectId.isValid(leaveId)) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
+        const updatedLeave = await Leave.findByIdAndUpdate(
+            leaveId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).populate({
+            path: 'userId',
+            select: '-password',
+            populate: {
+                path: 'role',
+                select: 'name permissions'
+            }
+        });
+
+        if (!updatedLeave) {
+            return res.status(404).json({
                 status: 'fail',
-                message: 'Please provide a valid leave ID'
+                message: 'Leave not found'
             });
         }
 
-        // Remove restricted fields
-        delete updateData.status; // Status should be updated via updateLeaveStatus
-        delete updateData.userId; // Cannot change which user the leave belongs to
-
-        // Update the leave
-        const updatedLeave = await updateLeave(leaveId, updateData, file);
-
-        return res.status(StatusCodes.OK).json({
+        return res.status(200).json({
             status: 'success',
-            data: updatedLeave
+            data: {
+                leave: updatedLeave,
+                user: updatedLeave.userId
+            }
         });
-
     } catch (error) {
-        const statusCode = error.message.includes('not found') ? 
-            StatusCodes.NOT_FOUND : StatusCodes.BAD_REQUEST;
-            
-        return res.status(statusCode).json({
+        return res.status(500).json({
             status: 'error',
             message: error.message
         });
