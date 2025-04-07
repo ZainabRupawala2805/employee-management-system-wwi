@@ -60,14 +60,20 @@ const generateLeaveDetails = (startDate, endDate) => {
 
 const updateLeaveStatus = async (leaveId, status) => {
     try {
-        const leave = await Leave.findById(leaveId).populate("userId");
+        // Find leave and populate user, excluding password
+        const leave = await Leave.findById(leaveId)
+            .populate({
+                path: "userId",
+                select: "-password" // Explicitly exclude password
+            });
 
         if (!leave) {
             throw new Error("Leave not found");
         }
 
-        // Fetch the user to update leave balances
-        const user = await User.findById(leave.userId._id);
+        // Fetch the user to update leave balances (still exclude password)
+        const user = await User.findById(leave.userId._id)
+            .select("-password");
 
         if (!user) {
             throw new Error("User not found");
@@ -92,7 +98,6 @@ const updateLeaveStatus = async (leaveId, status) => {
 
         // Check if the leave is being approved
         if (status === "Approved") {
-            // Handle different leave types
             switch (leave.leaveType) {
                 case "Paid":
                     if (user.paidLeave < totalDays) {
@@ -124,10 +129,7 @@ const updateLeaveStatus = async (leaveId, status) => {
                     throw new Error("Invalid leave type");
             }
 
-            // Update totalLeaves for all leave types (including unpaid)
             user.totalLeaves += totalDays;
-            
-            // Save the updated user
             await user.save();
         }
 
@@ -135,7 +137,13 @@ const updateLeaveStatus = async (leaveId, status) => {
         leave.status = status;
         await leave.save();
 
-        return leave;
+        // Convert to plain object and remove password if it exists
+        const result = leave.toObject();
+        if (result.userId && result.userId.password) {
+            delete result.userId.password;
+        }
+
+        return result;
     } catch (error) {
         throw new Error(error.message);
     }
