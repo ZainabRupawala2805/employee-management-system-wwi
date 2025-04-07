@@ -10,22 +10,22 @@ const createLeaveController = async (req, res) => {
     try {
         const { startDate, endDate, reason, leaveType, userId, halfDayDates } = req.body;
         const file = req.file; // Get uploaded file
-  
+
         if (!startDate || !reason || !leaveType) {
             return res.status(400).json({ status: "fail", message: "All fields are required" });
         }
-  
+
         // Convert to Date objects
         const start = new Date(startDate);
         const end = new Date(endDate);
-  
+
         if (start > end) {
             return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
         }
-  
+
         // Generate leaveDetails object
         let leaveDetails = generateLeaveDetails(start, end);
-  
+
         // Handle half-day leaves if specified
         if (halfDayDates && typeof halfDayDates === 'object') {
             Object.entries(halfDayDates).forEach(([date, session]) => {
@@ -34,8 +34,8 @@ const createLeaveController = async (req, res) => {
                 }
             });
         }
-  
-        const leave = await Leave.create({
+
+        await Leave.create({
             userId,
             startDate: start,
             endDate: end,
@@ -47,53 +47,109 @@ const createLeaveController = async (req, res) => {
             attachmentOriginalName: file ? file.originalname : null
         });
 
-        return res.status(StatusCodes.OK).json({ status: "success", message: "Leave created successfully!" , leaves: leave });
+        // const allLeaves = await Leave.findById(userId).populate({
+        //     path: 'userId',
+        //     select: "name, sickLeave, unpaidLeave, paidLeave, availableLeaves"
+        // });
+
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+
+        // Fetch the user details
+        const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Fetch leaves associated with the user
+        const leaves = await Leave.find({ userId: userObjectId }).sort({ startDate: -1 });
+
+        return res.status(StatusCodes.OK).json({ status: "success", message: "Leave created successfully!", 
+            leaves: {
+                user: {
+                    name: user.name,
+                    sickLeave: user.sickLeave,
+                    paidLeave: user.paidLeave,
+                    unpaidLeave: user.unpaidLeave,
+                    availableLeaves: user.availableLeaves,
+                },
+                data: leaves
+            }
+        });
 
     } catch (error) {
         return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
-            
+
 
 const updateLeaveStatusController = async (req, res) => {
     const { leaveId } = req.params;
     const { status } = req.body;
 
     if (!["Approved", "Rejected"].includes(status)) {
-        return res.status(StatusCodes.OK).json({ status: "fail" , message: "Invalid status. Must be 'Approved' or 'Rejected'" });
+        return res.status(StatusCodes.OK).json({
+            status: "fail",
+            message: "Invalid status. Must be 'Approved' or 'Rejected'"
+        });
     }
 
     try {
         const updatedLeave = await updateLeaveStatus(leaveId, status);
-        res.status(StatusCodes.OK).json({ status: "success", message: "Leave status updated successfully", leaves: updatedLeave });
+
+        // Populate additional user data if needed
+        const populatedLeave = await Leave.findById(updatedLeave._id)
+            .populate({
+                path: 'userId',
+                select: '-password',
+                populate: {
+                    path: 'role',
+                    select: 'name permissions'
+                }
+            });
+
+        res.status(StatusCodes.OK).json({
+            status: "success",
+            data: {
+                leave: populatedLeave,
+                user: populatedLeave.userId
+            }
+        });
     } catch (error) {
-        res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
+        res.status(StatusCodes.OK).json({
+            status: 'fail',
+            message: error.message
+        });
     }
 };
 
-// const getAllLeavesController = async (req, res) => {
-//   try {
-//       const leaves = await getAllLeaves();
+const getAllLeavesController = async (req, res) => {
+    try {
+        const leaves = await Leave.find()
+            .populate({
+                path: "userId",
+                select: "-password",
+                populate: {
+                    path: "role",
+                    select: "name permissions"
+                }
+            })
+            .sort({ createdAt: -1 });
 
-//       const formattedLeaves = leaves.map((leave) => ({
-//           _id: leave._id,
-//           startDate: leave.startDate,
-//           endDate: leave.endDate,
-//           reason: leave.reason,
-//           status: leave.status,
-//           leaveType: leave.leaveType,
-//           user: {
-//                 id: leave.userId._id,
-//                 name: leave.userId.name,
-//                 role: leave.userId.role.name,
-//           },
-//       }));
-
-//       res.status(200).json({ status: "success" , message: "Leaves fetched successfully", leaves: formattedLeaves });
-//   } catch (error) {
-//       res.status(StatusCodes.OK).json({ status: 'fail', message: error.message });
-//   }
-// };
+        res.status(200).json({
+            status: "success",
+            count: leaves.length,
+            data: leaves.map(leave => ({
+                leave,
+                user: leave.userId
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
 
 
 const getLeaveByIdController = async (req, res) => {
@@ -225,30 +281,37 @@ const getAllFilteredLeavesController = async (req, res) => {
 const updateLeaveController = async (req, res) => {
     const { leaveId } = req.params;
     const updateData = req.body;
-    const file = req.file; // Get uploaded file
+    const file = req.file;
 
     try {
-        // Validate input
-        if (!leaveId || !mongoose.Types.ObjectId.isValid(leaveId)) {
+        const updatedLeave = await Leave.findByIdAndUpdate(
+            leaveId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).populate({
+            path: 'userId',
+            select: '-password',
+            populate: {
+                path: 'role',
+                select: 'name permissions'
+            }
+        });
+
+        if (!updatedLeave) {
             return res.status(StatusCodes.OK).json({
                 status: 'fail',
-                message: 'Please provide a valid leave ID'
+                message: 'Leave not found'
             });
         }
 
-        // Remove restricted fields
-        delete updateData.status; // Status should be updated via updateLeaveStatus
-        delete updateData.userId; // Cannot change which user the leave belongs to
-
-        // Update the leave
-        const updatedLeave = await updateLeave(leaveId, updateData, file);
-
         return res.status(StatusCodes.OK).json({
             status: 'success',
-            leaves: updatedLeave
+            data: {
+                leave: updatedLeave,
+                user: updatedLeave.userId
+            }
         });
-
-    } catch (error) {            
+    } catch (error) {
         return res.status(StatusCodes.OK).json({
             status: 'fail',
             message: error.message
