@@ -7,49 +7,52 @@ const User = require('../models/User')
 
 
 const createLeaveController = async (req, res) => {
-  try {
-      const { startDate, reason, leaveType, userId, halfDayDates } = req.body;
-
-      if (!startDate || !reason || !leaveType) {
-          return res.status(400).json({ status: "fail", message: "All fields are required" });
-      }
-
-      // Convert to Date objects
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-
-      if (start > end) {
-          return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
-      }
-
-      // Generate leaveDetails object
-      let leaveDetails = generateLeaveDetails(start, end);
-
-      // If any half-day leaves are specified, update the leaveDetails object
-      if (halfDayDates && typeof halfDayDates === 'object') {
-          Object.entries(halfDayDates).forEach(([date, session]) => {
-              if (leaveDetails[date]) {
-                  leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
-              }
-          });
-      }
-
-      const leave = await Leave.create({
-          userId,
-          startDate: start,
-          endDate: end,
-          reason,
-          status: "Pending",
-          leaveType,
-          leaveDetails
-      });
-
-      return res.status(201).json({ status: "success", data: leave });
-
-  } catch (error) {
-      return res.status(500).json({ status: "error", message: error.message });
-  }
-};
+    try {
+        const { startDate, endDate, reason, leaveType, userId, halfDayDates } = req.body;
+        const file = req.file; // Get uploaded file
+  
+        if (!startDate || !reason || !leaveType) {
+            return res.status(400).json({ status: "fail", message: "All fields are required" });
+        }
+  
+        // Convert to Date objects
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+  
+        if (start > end) {
+            return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
+        }
+  
+        // Generate leaveDetails object
+        let leaveDetails = generateLeaveDetails(start, end);
+  
+        // Handle half-day leaves if specified
+        if (halfDayDates && typeof halfDayDates === 'object') {
+            Object.entries(halfDayDates).forEach(([date, session]) => {
+                if (leaveDetails[date]) {
+                    leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
+                }
+            });
+        }
+  
+        const leave = await Leave.create({
+            userId,
+            startDate: start,
+            endDate: end,
+            reason,
+            status: "Pending",
+            leaveType,
+            leaveDetails,
+            attachment: file ? `/uploads/${file.filename}` : null,
+            attachmentOriginalName: file ? file.originalname : null
+        });
+  
+        return res.status(201).json({ status: "success", data: leave });
+  
+    } catch (error) {
+        return res.status(500).json({ status: "error", message: error.message });
+    }
+  };
 
 const updateLeaveStatusController = async (req, res) => {
   const { leaveId } = req.params;
@@ -216,6 +219,7 @@ const getAllFilteredLeavesController = async (req, res) => {
 const updateLeaveController = async (req, res) => {
     const { leaveId } = req.params;
     const updateData = req.body;
+    const file = req.file; // Get uploaded file
 
     try {
         // Validate input
@@ -231,7 +235,7 @@ const updateLeaveController = async (req, res) => {
         delete updateData.userId; // Cannot change which user the leave belongs to
 
         // Update the leave
-        const updatedLeave = await updateLeave(leaveId, updateData);
+        const updatedLeave = await updateLeave(leaveId, updateData, file);
 
         return res.status(StatusCodes.OK).json({
             status: 'success',

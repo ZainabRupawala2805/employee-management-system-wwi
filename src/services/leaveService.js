@@ -265,7 +265,7 @@ const getFilteredLeaves = async (userId, userRole, reportBy) => {
     }
 };
 
-const updateLeave = async (leaveId, updateData) => {
+const updateLeave = async (leaveId, updateData, file) => {
     try {
         // Validate leave ID
         if (!mongoose.Types.ObjectId.isValid(leaveId)) {
@@ -278,7 +278,16 @@ const updateLeave = async (leaveId, updateData) => {
             throw new Error('Leave not found');
         }
 
-        // Prevent status updates through this endpoint (use updateLeaveStatus for that)
+        // Handle file attachment if provided
+        if (file) {
+            // Here you would typically:
+            // 1. Delete the old file if it exists
+            // 2. Upload the new file
+            updateData.attachment = `/uploads/${file.filename}`;
+            updateData.attachmentOriginalName = file.originalname;
+        }
+
+        // Prevent status updates through this endpoint
         if (updateData.status && updateData.status !== existingLeave.status) {
             throw new Error('Use the updateLeaveStatus endpoint to change leave status');
         }
@@ -313,6 +322,8 @@ const updateLeave = async (leaveId, updateData) => {
         throw error;
     }
 };
+
+
 module.exports = {
     updateLeaveStatus,
     getLeaveById,
