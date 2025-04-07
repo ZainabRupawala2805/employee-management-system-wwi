@@ -44,7 +44,7 @@ const createLeaveController = async (req, res) => {
             leaveDetails
         });
 
-        return res.status(StatusCodes.OK).json({ status: "success", leaves: leave });
+        return res.status(StatusCodes.OK).json({ status: "success", message: "Leave created successfully!" , leaves: leave });
 
     } catch (error) {
         return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });

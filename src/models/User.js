@@ -81,6 +81,7 @@ const userSchema = new mongoose.Schema(
         },
         unpaidLeave:{
             type: Number,
+            default: 0,
             required: false
         }
     },

@@ -61,7 +61,7 @@ const generateLeaveDetails = (startDate, endDate) => {
 const updateLeaveStatus = async (leaveId, status) => {
     try {
         const leave = await Leave.findById(leaveId).populate("userId");
-
+        
         if (!leave) {
             throw new Error("Leave not found");
         }
@@ -181,7 +181,7 @@ const getLeavesByUserId = async (userId) => {
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
         // Fetch the user details
-        const user = await User.findById(userObjectId).select("name email sickLeave paidLeave availableLeaves");
+        const user = await User.findById(userObjectId).select("name email sickLeave paidLeave unpaidLeave availableLeaves");
         if (!user) {
             throw new Error("User not found");
         }
