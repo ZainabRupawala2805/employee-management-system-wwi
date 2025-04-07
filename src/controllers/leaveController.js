@@ -1,4 +1,4 @@
-const { updateLeaveStatus, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails } = require("../services/leaveService");
+const { updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails, updateLeave } = require("../services/leaveService");
 const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
 const Leave = require('../models/Leave')
@@ -9,23 +9,24 @@ const User = require('../models/User')
 const createLeaveController = async (req, res) => {
     try {
         const { startDate, endDate, reason, leaveType, userId, halfDayDates } = req.body;
-
-        if (!startDate || !userId || !reason || !leaveType) {
+        const file = req.file; // Get uploaded file
+  
+        if (!startDate || !reason || !leaveType) {
             return res.status(400).json({ status: "fail", message: "All fields are required" });
         }
-
+  
         // Convert to Date objects
         const start = new Date(startDate);
         const end = new Date(endDate);
-
+  
         if (start > end) {
-            return res.status(StatusCodes.OK).json({ status: "fail", message: "Start date cannot be after end date" });
+            return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
         }
-
+  
         // Generate leaveDetails object
         let leaveDetails = generateLeaveDetails(start, end);
-
-        // If any half-day leaves are specified, update the leaveDetails object
+  
+        // Handle half-day leaves if specified
         if (halfDayDates && typeof halfDayDates === 'object') {
             Object.entries(halfDayDates).forEach(([date, session]) => {
                 if (leaveDetails[date]) {
@@ -33,7 +34,7 @@ const createLeaveController = async (req, res) => {
                 }
             });
         }
-
+  
         const leave = await Leave.create({
             userId,
             startDate: start,
@@ -41,7 +42,9 @@ const createLeaveController = async (req, res) => {
             reason,
             status: "Pending",
             leaveType,
-            leaveDetails
+            leaveDetails,
+            attachment: file ? `/uploads/${file.filename}` : null,
+            attachmentOriginalName: file ? file.originalname : null
         });
 
         return res.status(StatusCodes.OK).json({ status: "success", message: "Leave created successfully!" , leaves: leave });
@@ -50,6 +53,7 @@ const createLeaveController = async (req, res) => {
         return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
+            
 
 const updateLeaveStatusController = async (req, res) => {
     const { leaveId } = req.params;
@@ -201,7 +205,6 @@ const getAllFilteredLeavesController = async (req, res) => {
             leaves = await Leave.find().populate("userId", "name email role");
         } else {
             const user = await User.findById(id).select("reportBy");
-            console.log(user);
 
             if (!user) {
                 return res.status(StatusCodes.OK).json({ status: "fail", message: "User not found" });
@@ -219,10 +222,45 @@ const getAllFilteredLeavesController = async (req, res) => {
 };
 
 
+const updateLeaveController = async (req, res) => {
+    const { leaveId } = req.params;
+    const updateData = req.body;
+    const file = req.file; // Get uploaded file
+
+    try {
+        // Validate input
+        if (!leaveId || !mongoose.Types.ObjectId.isValid(leaveId)) {
+            return res.status(StatusCodes.OK).json({
+                status: 'fail',
+                message: 'Please provide a valid leave ID'
+            });
+        }
+
+        // Remove restricted fields
+        delete updateData.status; // Status should be updated via updateLeaveStatus
+        delete updateData.userId; // Cannot change which user the leave belongs to
+
+        // Update the leave
+        const updatedLeave = await updateLeave(leaveId, updateData, file);
+
+        return res.status(StatusCodes.OK).json({
+            status: 'success',
+            leaves: updatedLeave
+        });
+
+    } catch (error) {            
+        return res.status(StatusCodes.OK).json({
+            status: 'fail',
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     createLeaveController,
     updateLeaveStatusController,
     getLeaveByIdController,
     getLeavesByUserIdController,
-    getAllFilteredLeavesController
+    getAllFilteredLeavesController,
+    updateLeaveController
 };

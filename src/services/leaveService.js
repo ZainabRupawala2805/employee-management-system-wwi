@@ -60,18 +60,30 @@ const generateLeaveDetails = (startDate, endDate) => {
 
 const updateLeaveStatus = async (leaveId, status) => {
     try {
-        const leave = await Leave.findById(leaveId).populate("userId");
-        
+        // Find leave and populate user, excluding password
+        const leave = await Leave.findById(leaveId)
+            .populate({
+                path: "userId",
+                select: "-password" // Explicitly exclude password
+            });
+
         if (!leave) {
             throw new Error("Leave not found");
         }
 
-        // Fetch the user to update leave balances
-        const user = await User.findById(leave.userId._id);
+        // Fetch the user to update leave balances (still exclude password)
+        const user = await User.findById(leave.userId._id)
+            .select("-password");
 
         if (!user) {
             throw new Error("User not found");
         }
+
+        // Ensure numeric fields are valid numbers
+        user.availableLeaves = Number(user.availableLeaves) || 0;
+        user.paidLeave = Number(user.paidLeave) || 0;
+        user.sickLeave = Number(user.sickLeave) || 0;
+        user.totalLeaves = Number(user.totalLeaves) || 0;
 
         // Calculate the total leave days
         let totalDays = 0;
@@ -86,27 +98,38 @@ const updateLeaveStatus = async (leaveId, status) => {
 
         // Check if the leave is being approved
         if (status === "Approved") {
-            if (user.availableLeaves < totalDays) {
-                throw new Error("Not enough leaves available");
-            }
-            
-            user.availableLeaves -= totalDays;
+            switch (leave.leaveType) {
+                case "Paid":
+                    if (user.paidLeave < totalDays) {
+                        throw new Error("Not enough paid leaves available");
+                    }
+                    if (user.availableLeaves < totalDays) {
+                        throw new Error("Not enough available leaves");
+                    }
+                    user.paidLeave -= totalDays;
+                    user.availableLeaves -= totalDays;
+                    break;
 
-            if (leave.leaveType === "Sick") {
-                if (user.sickLeave < totalDays) {
-                    throw new Error("Not enough sick leaves available");
-                }
-                user.sickLeave -= totalDays;
-            } else if (leave.leaveType === "Paid") {
-                if (user.paidLeave < totalDays) {
-                    throw new Error("Not enough paid leaves available");
-                }
-                user.paidLeave -= totalDays;
-            } else {
-                throw new Error("Invalid leave type");
+                case "Sick":
+                    if (user.sickLeave < totalDays) {
+                        throw new Error("Not enough sick leaves available");
+                    }
+                    if (user.availableLeaves < totalDays) {
+                        throw new Error("Not enough available leaves");
+                    }
+                    user.sickLeave -= totalDays;
+                    user.availableLeaves -= totalDays;
+                    break;
+
+                case "Unpaid":
+                    // No deductions for unpaid leaves
+                    break;
+
+                default:
+                    throw new Error("Invalid leave type");
             }
 
-            // Save the updated user
+            user.totalLeaves += totalDays;
             await user.save();
         }
 
@@ -114,7 +137,13 @@ const updateLeaveStatus = async (leaveId, status) => {
         leave.status = status;
         await leave.save();
 
-        return leave;
+        // Convert to plain object and remove password if it exists
+        const result = leave.toObject();
+        if (result.userId && result.userId.password) {
+            delete result.userId.password;
+        }
+
+        return result;
     } catch (error) {
         throw new Error(error.message);
     }
@@ -234,10 +263,71 @@ const getFilteredLeaves = async (userId, userRole, reportBy) => {
         throw new Error(error.message);
     }
 };
+
+const updateLeave = async (leaveId, updateData, file) => {
+    try {
+        // Validate leave ID
+        if (!mongoose.Types.ObjectId.isValid(leaveId)) {
+            throw new Error('Invalid leave ID format');
+        }
+
+        // Check if leave exists
+        const existingLeave = await Leave.findById(leaveId);
+        if (!existingLeave) {
+            throw new Error('Leave not found');
+        }
+
+        // Handle file attachment if provided
+        if (file) {
+            // Here you would typically:
+            // 1. Delete the old file if it exists
+            // 2. Upload the new file
+            updateData.attachment = `/uploads/${file.filename}`;
+            updateData.attachmentOriginalName = file.originalname;
+        }
+
+        // Prevent status updates through this endpoint
+        if (updateData.status && updateData.status !== existingLeave.status) {
+            throw new Error('Use the updateLeaveStatus endpoint to change leave status');
+        }
+
+        // Calculate days if dates are being updated
+        if (updateData.startDate || updateData.endDate) {
+            const startDate = updateData.startDate || existingLeave.startDate;
+            const endDate = updateData.endDate || existingLeave.endDate;
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                throw new Error('Start date cannot be after end date');
+            }
+
+            // Regenerate leaveDetails if dates change
+            if (updateData.startDate || updateData.endDate) {
+                updateData.leaveDetails = generateLeaveDetails(
+                    new Date(startDate),
+                    new Date(endDate)
+                );
+            }
+        }
+
+        // Update the leave
+        const updatedLeave = await Leave.findByIdAndUpdate(
+            leaveId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).populate('userId', 'name availableLeaves sickLeave paidLeave unpaidLeave');
+
+        return updatedLeave;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 module.exports = {
     updateLeaveStatus,
     getLeaveById,
     getLeavesByUserId,
     getFilteredLeaves,
-    generateLeaveDetails
+    generateLeaveDetails,
+    updateLeave
 };
