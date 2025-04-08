@@ -180,7 +180,7 @@ const updateLeaveStatusController = async (req, res) => {
         res.status(StatusCodes.OK).json({
             status: "success",
             message: "Leave status updated and leaves fetched based on role",
-            leaves:  leaves
+            leaves: leaves
         });
     } catch (error) {
         res.status(StatusCodes.OK).json({
@@ -370,44 +370,93 @@ const getAllFilteredLeavesController = async (req, res) => {
 
 const updateLeaveController = async (req, res) => {
     const { leaveId } = req.params;
-    const updateData = req.body;
     const file = req.file;
+    let updateData = { ...req.body };
+    const { userId } = req.body;
 
     try {
+        // Handle date conversion and leaveDetails regeneration
+        if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+        if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+
+        if (updateData.startDate && updateData.endDate) {
+            if (updateData.startDate > updateData.endDate) {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: 'Start date cannot be after end date'
+                });
+            }
+
+            // Regenerate leaveDetails
+            let leaveDetails = generateLeaveDetails(updateData.startDate, updateData.endDate);
+
+            // Apply half-day logic if provided
+            if (updateData.halfDayDates && typeof updateData.halfDayDates === 'object') {
+                Object.entries(updateData.halfDayDates).forEach(([date, session]) => {
+                    if (leaveDetails[date]) {
+                        leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
+                    }
+                });
+            }
+
+            updateData.leaveDetails = leaveDetails;
+        }
+
+        // Handle file update
+        if (file) {
+            updateData.attachment = `/uploads/${file.filename}`;
+            updateData.attachmentOriginalName = file.originalname;
+        }
+
         const updatedLeave = await Leave.findByIdAndUpdate(
             leaveId,
             { $set: updateData },
             { new: true, runValidators: true }
-        ).populate({
-            path: 'userId',
-            select: '-password',
-            populate: {
-                path: 'role',
-                select: 'name permissions'
-            }
-        });
+        )
 
         if (!updatedLeave) {
-            return res.status(StatusCodes.OK).json({
+            return res.status(404).json({
                 status: 'fail',
                 message: 'Leave not found'
             });
         }
 
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+
+        // Fetch the user details
+        const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Fetch leaves associated with the user
+        const leaves = await Leave.find({ userId: userObjectId })
+            .populate("userId", "name")
+            .sort({ startDate: -1 });
+
         return res.status(StatusCodes.OK).json({
-            status: 'success',
-            data: {
-                leave: updatedLeave,
-                user: updatedLeave.userId
+            status: "success", message: "Leave created successfully!",
+            leaves: {
+                user: {
+                    name: user.name,
+                    sickLeave: user.sickLeave,
+                    paidLeave: user.paidLeave,
+                    unpaidLeave: user.unpaidLeave,
+                    availableLeaves: user.availableLeaves,
+                },
+                data: leaves
             }
         });
+        
     } catch (error) {
-        return res.status(StatusCodes.OK).json({
-            status: 'fail',
+        return res.status(500).json({
+            status: 'error',
             message: error.message
         });
     }
 };
+
+
 
 module.exports = {
     createLeaveController,
