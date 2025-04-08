@@ -15,7 +15,7 @@ const mongoose = require("mongoose");
 //             throw new Error("User not found");
 //         }
 
-        
+
 //         const timeDiff = new Date(endDate) - new Date(startDate);
 //         const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
 
@@ -51,7 +51,7 @@ const generateLeaveDetails = (startDate, endDate) => {
         details[formattedDate] = "Full Day"; // Default to Full Day
         currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     return details;
 };
 
@@ -81,6 +81,7 @@ const updateLeaveStatus = async (leaveId, status) => {
 
         // Ensure numeric fields are valid numbers
         user.availableLeaves = Number(user.availableLeaves) || 0;
+        user.unpaidLeave = Number(user.unpaidLeave) || 0;
         user.paidLeave = Number(user.paidLeave) || 0;
         user.sickLeave = Number(user.sickLeave) || 0;
         user.totalLeaves = Number(user.totalLeaves) || 0;
@@ -122,7 +123,7 @@ const updateLeaveStatus = async (leaveId, status) => {
                     break;
 
                 case "Unpaid":
-                    // No deductions for unpaid leaves
+                    user.unpaidLeave += totalDays;
                     break;
 
                 default:
@@ -173,13 +174,13 @@ const getLeaveById = async (leaveId) => {
     try {
         // Trim and validate the ID
         const trimmedId = String(leaveId).trim();
-        
+
         if (!mongoose.Types.ObjectId.isValid(trimmedId)) {
             throw new Error('Invalid leave ID format');
         }
 
         const leaveObjectId = new mongoose.Types.ObjectId(trimmedId);
-        
+
         const leave = await Leave.findById(leaveObjectId)
             .populate({
                 path: 'userId',
@@ -210,7 +211,7 @@ const getLeavesByUserId = async (userId) => {
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
         // Fetch the user details
-        const user = await User.findById(userObjectId).select("name email sickLeave paidLeave unpaidLeave availableLeaves");
+        const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
         if (!user) {
             throw new Error("User not found");
         }
@@ -237,24 +238,23 @@ const getLeavesByUserId = async (userId) => {
 
 const getFilteredLeaves = async (userId, userRole, reportBy) => {
     try {
-        let query = {};
+        let query = null;
+        console.log(reportBy)
 
         if (userRole === "Founder") {
-            // Founder gets all leave records
-            query = {};
-        } else if (reportBy.length > 0) {
-            // If the user has a reportBy list, fetch leaves of those users
-            query = { userId: { $in: reportBy } };
+            query = {}; // All records
+        } else if (Array.isArray(reportBy) && reportBy.filter(Boolean).length > 0) {
+            // Only use valid non-null/non-undefined userIds
+            query = { userId: { $in: reportBy.filter(Boolean) } };
         } else {
-            // If no reportBy users, fetch only the current user's leaves
-            query = { userId };
+            // If reportBy is empty or not an array, return empty list
+            return [];
         }
 
         const leaves = await Leave.find(query)
             .populate({
                 path: "userId",
                 select: "name",
-                // populate: { path: "role", select: "name" },
             })
             .sort({ startDate: -1 });
 
@@ -263,6 +263,8 @@ const getFilteredLeaves = async (userId, userRole, reportBy) => {
         throw new Error(error.message);
     }
 };
+
+
 
 const updateLeave = async (leaveId, updateData, file) => {
     try {
@@ -295,7 +297,7 @@ const updateLeave = async (leaveId, updateData, file) => {
         if (updateData.startDate || updateData.endDate) {
             const startDate = updateData.startDate || existingLeave.startDate;
             const endDate = updateData.endDate || existingLeave.endDate;
-            
+
             if (new Date(startDate) > new Date(endDate)) {
                 throw new Error('Start date cannot be after end date');
             }

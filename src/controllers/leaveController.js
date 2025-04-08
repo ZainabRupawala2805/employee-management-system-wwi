@@ -61,9 +61,12 @@ const createLeaveController = async (req, res) => {
         }
 
         // Fetch leaves associated with the user
-        const leaves = await Leave.find({ userId: userObjectId }).sort({ startDate: -1 });
+        const leaves = await Leave.find({ userId: userObjectId })
+            .populate("userId", "name")
+            .sort({ startDate: -1 });
 
-        return res.status(StatusCodes.OK).json({ status: "success", message: "Leave created successfully!", 
+        return res.status(StatusCodes.OK).json({
+            status: "success", message: "Leave created successfully!",
             leaves: {
                 user: {
                     name: user.name,
@@ -82,6 +85,46 @@ const createLeaveController = async (req, res) => {
 };
 
 
+// const updateLeaveStatusController = async (req, res) => {
+//     const { leaveId } = req.params;
+//     const { status } = req.body;
+
+//     if (!["Approved", "Rejected"].includes(status)) {
+//         return res.status(StatusCodes.OK).json({
+//             status: "fail",
+//             message: "Invalid status. Must be 'Approved' or 'Rejected'"
+//         });
+//     }
+
+//     try {
+//         const updatedLeave = await updateLeaveStatus(leaveId, status);
+
+//         // Populate additional user data if needed
+//         const populatedLeave = await Leave.findById(updatedLeave._id)
+//             .populate({
+//                 path: 'userId',
+//                 select: '-password',
+//                 populate: {
+//                     path: 'role',
+//                     select: 'name permissions'
+//                 }
+//             });
+
+//         res.status(StatusCodes.OK).json({
+//             status: "success",
+//             data: {
+//                 leave: populatedLeave,
+//                 user: populatedLeave.userId
+//             }
+//         });
+//     } catch (error) {
+//         res.status(StatusCodes.OK).json({
+//             status: 'fail',
+//             message: error.message
+//         });
+//     }
+// };
+
 const updateLeaveStatusController = async (req, res) => {
     const { leaveId } = req.params;
     const { status } = req.body;
@@ -96,23 +139,48 @@ const updateLeaveStatusController = async (req, res) => {
     try {
         const updatedLeave = await updateLeaveStatus(leaveId, status);
 
-        // Populate additional user data if needed
-        const populatedLeave = await Leave.findById(updatedLeave._id)
-            .populate({
-                path: 'userId',
-                select: '-password',
-                populate: {
-                    path: 'role',
-                    select: 'name permissions'
-                }
-            });
+        // Get current user's ID and role
+        const currentUserId = req.user.id;
+        const currentUserRole = req.user.role; // Assuming this is a string like "Founder"
+
+        let leaves = [];
+
+        if (currentUserRole === "Founder") {
+            // Founder gets all leave records
+            leaves = await Leave.find({})
+                .populate({
+                    path: 'userId',
+                    select: 'name',
+                    populate: {
+                        path: 'role',
+                        select: 'name'
+                    }
+                })
+                .sort({ startDate: -1 });
+        } else {
+            // Fetch reportBy from User schema
+            const currentUser = await User.findById(currentUserId).select("reportBy");
+
+            if (Array.isArray(currentUser.reportBy) && currentUser.reportBy.length > 0) {
+                leaves = await Leave.find({ userId: { $in: currentUser.reportBy } })
+                    .populate({
+                        path: 'userId',
+                        select: 'name',
+                        populate: {
+                            path: 'role',
+                            select: 'name'
+                        }
+                    })
+                    .sort({ startDate: -1 });
+            } else {
+                leaves = []; // No access
+            }
+        }
 
         res.status(StatusCodes.OK).json({
             status: "success",
-            data: {
-                leave: populatedLeave,
-                user: populatedLeave.userId
-            }
+            message: "Leave status updated and leaves fetched based on role",
+            leaves:  leaves
         });
     } catch (error) {
         res.status(StatusCodes.OK).json({
@@ -121,6 +189,7 @@ const updateLeaveStatusController = async (req, res) => {
         });
     }
 };
+
 
 const getAllLeavesController = async (req, res) => {
     try {
@@ -253,29 +322,50 @@ const getLeavesByUserIdController = async (req, res) => { // logged in user, sin
 
 const getAllFilteredLeavesController = async (req, res) => {
     try {
-        const { role, id } = req.user; // Extract user role and ID from token
+        const { role, id } = req.user;
 
-        let leaves;
+        let leaves = [];
 
         if (role === "Founder") {
-            leaves = await Leave.find().populate("userId", "name email role");
+            leaves = await Leave.find().populate("userId", "name role");
         } else {
             const user = await User.findById(id).select("reportBy");
 
             if (!user) {
-                return res.status(StatusCodes.OK).json({ status: "fail", message: "User not found" });
+                return res.status(StatusCodes.OK).json({
+                    status: "fail",
+                    message: "User not found"
+                });
             }
 
-            let userIdsToFetch = user.reportBy.length > 0 ? user.reportBy : [id];
-            leaves = await Leave.find({ userId: { $in: userIdsToFetch } }).populate("userId", "name email role");
+            if (Array.isArray(user.reportBy) && user.reportBy.length > 0) {
+                leaves = await Leave.find({ userId: { $in: user.reportBy } }).populate("userId", "name role");
+            } else {
+                // No users reporting to this user — return empty data
+                return res.status(StatusCodes.OK).json({
+                    status: "success",
+                    count: 0,
+                    leaves: [],
+                    message: "No users reporting to you, so no leaves to fetch."
+                });
+            }
         }
 
-        return res.status(StatusCodes.OK).json({ status: "success", count: leaves.length, leaves: leaves, message: "Leaves fetched successfully" });
+        return res.status(StatusCodes.OK).json({
+            status: "success",
+            count: leaves.length,
+            leaves: leaves,
+            message: "Leaves fetched successfully"
+        });
 
     } catch (error) {
-        return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
+        return res.status(StatusCodes.OK).json({
+            status: "fail",
+            message: error.message
+        });
     }
 };
+
 
 
 const updateLeaveController = async (req, res) => {
