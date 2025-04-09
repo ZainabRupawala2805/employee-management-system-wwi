@@ -309,6 +309,14 @@ const updateLeave = async (leaveId, updateData, file) => {
                     new Date(endDate)
                 );
             }
+            // Apply half-day logic if provided
+            if (updateData.halfDayDates && typeof updateData.halfDayDates === 'object') {
+                Object.entries(updateData.halfDayDates).forEach(([date, session]) => {
+                    if (leaveDetails[date]) {
+                        leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
+                    }
+                });
+            }
         }
 
         // Update the leave

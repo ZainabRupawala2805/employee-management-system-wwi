@@ -43,7 +43,6 @@ const userSchema = new mongoose.Schema(
         password: {
             type: String,
             required: [true, "Please provide password."],
-            select: false,
             // match: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{6,}$/
         },
         dateOfJoining: {

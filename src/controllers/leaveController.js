@@ -23,9 +23,13 @@ const createLeaveController = async (req, res) => {
             return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
         }
 
+        console.log("halfDayDates: " , halfDayDates);
+
         // Generate leaveDetails object
         let leaveDetails = generateLeaveDetails(start, end);
 
+        console.log("leaveDetails: " , leaveDetails);
+        
         // Handle half-day leaves if specified
         if (halfDayDates && typeof halfDayDates === 'object') {
             Object.entries(halfDayDates).forEach(([date, session]) => {
@@ -34,6 +38,8 @@ const createLeaveController = async (req, res) => {
                 }
             });
         }
+
+        console.log("leaveDetails: " , leaveDetails);
 
         await Leave.create({
             userId,
@@ -388,7 +394,7 @@ const updateLeaveController = async (req, res) => {
             }
 
             // Regenerate leaveDetails
-            let leaveDetails = generateLeaveDetails(updateData.startDate, updateData.endDate);
+            let leaveDetails = generateLeaveDetails(updateData.startDate, updateData.endDate, updateData.halfDayDates );
 
             // Apply half-day logic if provided
             if (updateData.halfDayDates && typeof updateData.halfDayDates === 'object') {
@@ -447,7 +453,7 @@ const updateLeaveController = async (req, res) => {
                 data: leaves
             }
         });
-        
+
     } catch (error) {
         return res.status(500).json({
             status: 'error',

@@ -25,6 +25,14 @@ const attendanceSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        location: {
+            type: Object,
+            required: false
+        },
+        IP_Address: {
+            type: String,
+            required: false
+        },
         status: {
             type: String,
             enum: ["Present", "Absent", "Leave", "In Approval"],

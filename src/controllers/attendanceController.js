@@ -4,28 +4,63 @@ const CustomError = require('../errors');
 
 
 // check-in or marking attendance
-const checkIn = async(req, res) => {
+const checkIn = async (req, res) => {
     try {
-        const { userId } = req.body;
-        if ( !userId ) {
+        const { requestData } = req.body;
+        const { userId, ip, location } = requestData;
+
+        if (!userId) {
             throw new CustomError.BadRequestError("User not found.");
         }
-        const attendance = await attendanceService.markAttendance(userId);
-        res.status(StatusCodes.CREATED).json({status: "success", message: 'Checked In successfully!', attendance});
+
+        // Define the office IP to compare with
+        // const officeIP = "116.74.141.246"; // Replace this with ENV or DB if dynamic
+        const officeIP = "192.168.1.5";
+
+        const isInOffice = ip === officeIP;
+
+        const attendance = await attendanceService.markAttendance({
+            userId,
+            ip,
+            location: isInOffice ? null : location, // Only pass location if IP doesn't match
+        });
+
+        res.status(StatusCodes.CREATED).json({
+            status: "success",
+            message: "Checked In successfully!",
+            attendance
+        });
+
     } catch (err) {
-        res.status(StatusCodes.OK).json({ status: 'fail', message: err.message});
+        res.status(StatusCodes.OK).json({
+            status: "fail",
+            message: err.message
+        });
     }
 };
+
 
 // Mark check-out
 const checkOut = async ( req, res ) => {
     try {
-        const { userId } = req.body;
+        const { requestData } = req.body;
+        const { userId, ip, location } = requestData;
+
         if ( !userId ) {
             throw new CustomError.BadRequestError("User not found.");
         }
-        const attendance = await attendanceService.markCheckout(userId);
 
+        // Define the office IP to compare with
+        // const officeIP = "116.74.141.246"; // Replace this with ENV or DB if dynamic
+        const officeIP = "192.168.1.5";
+
+        const isInOffice = ip === officeIP;
+
+        const attendance = await attendanceService.markCheckout({
+            userId,
+            ip,
+            location: isInOffice ? null : location, // Only pass location if IP doesn't match
+        });
         res.status(StatusCodes.OK).json({status: 'success', message : 'Checked-out successfully!', attendance});
     } catch (error) {
         res.status(StatusCodes.OK).json({ status: 'fail', message : error.message});

@@ -7,8 +7,9 @@ const moment = require("moment");
 const { fetchAttendanceByRole } = require('../utils/getAttendanceUtils');
 
 
-const markAttendance = async (userId) => {
+const markAttendance = async ({ userId, ip, location }) => {
     const date = new Date().toISOString().split('T')[0];
+
     let attendance = await Attendance.findOne({ userId, date });
     if (attendance) {
         throw new CustomError.BadRequestError("Attendance is already registered for today!");
@@ -18,13 +19,13 @@ const markAttendance = async (userId) => {
         userId,
         date,
         clocksIn: new Date(),
-        status: 'Present'
+        status: 'Present',
+        IP_Address: ip,
+        ...(location && { location }) // only include location if present
     });
-    console.log(attendance.clocksIn);
+
     await attendance.save();
 
-    // call fetchAttendanceByRole from utils to get the response.
-    // return await fetchAttendanceByRole(userId, role);
     const response = await Attendance.find({ userId })
         .populate("userId", "name")
         .sort({ date: -1 });
@@ -33,7 +34,7 @@ const markAttendance = async (userId) => {
 };
 
 // Mark check-out and calculate total working hours
-const markCheckout = async (userId) => {
+const markCheckout = async ({ userId, ip, location }) => {
     const date = new Date().toISOString().split('T')[0];
     let attendance = await Attendance.findOne({ userId, date });
     if (!attendance) {
@@ -45,10 +46,16 @@ const markCheckout = async (userId) => {
     }
 
     attendance.clocksOut = new Date();
-    console.log(attendance.clocksOut);
+    // console.log(attendance.clocksOut);
 
     attendance.totalHours = ((attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60)).toFixed(3);
-    console.log(attendance.totalHours);
+    // console.log(attendance.totalHours);
+
+    attendance.IP_Address = ip;
+
+    if(location) {
+        attendance.location = location;
+    }
 
     await attendance.save();
 
@@ -91,8 +98,8 @@ const updateAttendance = async (id, data) => {
         attendance.totalHours = parseFloat(attendance.totalHours.toFixed(2)); // Keep 2 decimal places
     }
 
-     // Change status to "In Approval" when user edits attendance
-     attendance.status = "In Approval";
+    // Change status to "In Approval" when user edits attendance
+    attendance.status = "In Approval";
 
     // Save the updated document
     const updatedRecord = await attendance.save();
@@ -125,7 +132,7 @@ const markAbsent = async () => {
                     userId: user._id,
                     startDate: { $lte: today },
                     endDate: { $gte: today },
-                    status: "Approved",   
+                    status: "Approved",
                 });
 
                 if (approvedLeave) {
@@ -164,7 +171,7 @@ const approveOrRejectAttendance = async (attendanceId, managerId, action) => {
     // Find the attendance record
     const attendance = await Attendance.findById(attendanceId);
     console.log(attendance);
-    
+
     if (!attendance) {
         throw new CustomError.NotFoundError("Attendance record not found!");
     }

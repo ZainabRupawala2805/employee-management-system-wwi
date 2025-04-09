@@ -6,13 +6,18 @@ const bodyParser = require('body-parser');
 const path = require('path');
 
 // ✅ Allow requests from your frontend
-// app.use(cors({
-//     origin: 'http://localhost:5174',  // Change this to match your frontend URL
-//     credentials: true                 // Allow cookies and authentication headers
-// }));
+// CORS config
+app.use(cors({
+    origin: "http://localhost:5173", // frontend origin
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+}));
+
+app.options("*", cors());
 
 // OR allow all origins (for development only)
-app.use(cors());
+// app.use(cors());
 
 // Setup Environment Settings
 require('dotenv').config({ path: path.join(__dirname, '.env') });
