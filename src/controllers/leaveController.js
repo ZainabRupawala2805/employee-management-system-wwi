@@ -1,4 +1,4 @@
-const { updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails, updateLeave } = require("../services/leaveService");
+const { createLeave, updateLeaveStatus, getAllLeaves, getLeavesByUserId, getLeaveById, getFilteredLeaves, generateLeaveDetails, updateLeave } = require("../services/leaveService");
 const CustomError = require('../errors');
 const { StatusCodes } = require('http-status-codes');
 const Leave = require('../models/Leave')
@@ -8,68 +8,7 @@ const User = require('../models/User')
 
 const createLeaveController = async (req, res) => {
     try {
-        const { startDate, endDate, reason, leaveType, userId, halfDayDates } = req.body;
-        const file = req.file; // Get uploaded file
-
-        if (!startDate || !reason || !leaveType) {
-            return res.status(400).json({ status: "fail", message: "All fields are required" });
-        }
-
-        // Convert to Date objects
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        if (start > end) {
-            return res.status(400).json({ status: "fail", message: "Start date cannot be after end date" });
-        }
-
-        console.log("halfDayDates: " , halfDayDates);
-
-        // Generate leaveDetails object
-        let leaveDetails = generateLeaveDetails(start, end);
-
-        console.log("leaveDetails: " , leaveDetails);
-        
-        // Handle half-day leaves if specified
-        if (halfDayDates && typeof halfDayDates === 'object') {
-            Object.entries(halfDayDates).forEach(([date, session]) => {
-                if (leaveDetails[date]) {
-                    leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
-                }
-            });
-        }
-
-        console.log("leaveDetails: " , leaveDetails);
-
-        await Leave.create({
-            userId,
-            startDate: start,
-            endDate: end,
-            reason,
-            status: "Pending",
-            leaveType,
-            leaveDetails,
-            attachment: file ? `/uploads/${file.filename}` : null,
-            attachmentOriginalName: file ? file.originalname : null
-        });
-
-        // const allLeaves = await Leave.findById(userId).populate({
-        //     path: 'userId',
-        //     select: "name, sickLeave, unpaidLeave, paidLeave, availableLeaves"
-        // });
-
-        const userObjectId = new mongoose.Types.ObjectId(userId);
-
-        // Fetch the user details
-        const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
-        if (!user) {
-            throw new Error("User not found");
-        }
-
-        // Fetch leaves associated with the user
-        const leaves = await Leave.find({ userId: userObjectId })
-            .populate("userId", "name")
-            .sort({ startDate: -1 });
+        const { user, leaves } = await createLeave(req.body, req.file);
 
         return res.status(StatusCodes.OK).json({
             status: "success", message: "Leave created successfully!",
@@ -84,52 +23,11 @@ const createLeaveController = async (req, res) => {
                 data: leaves
             }
         });
-
     } catch (error) {
         return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
 
-
-// const updateLeaveStatusController = async (req, res) => {
-//     const { leaveId } = req.params;
-//     const { status } = req.body;
-
-//     if (!["Approved", "Rejected"].includes(status)) {
-//         return res.status(StatusCodes.OK).json({
-//             status: "fail",
-//             message: "Invalid status. Must be 'Approved' or 'Rejected'"
-//         });
-//     }
-
-//     try {
-//         const updatedLeave = await updateLeaveStatus(leaveId, status);
-
-//         // Populate additional user data if needed
-//         const populatedLeave = await Leave.findById(updatedLeave._id)
-//             .populate({
-//                 path: 'userId',
-//                 select: '-password',
-//                 populate: {
-//                     path: 'role',
-//                     select: 'name permissions'
-//                 }
-//             });
-
-//         res.status(StatusCodes.OK).json({
-//             status: "success",
-//             data: {
-//                 leave: populatedLeave,
-//                 user: populatedLeave.userId
-//             }
-//         });
-//     } catch (error) {
-//         res.status(StatusCodes.OK).json({
-//             status: 'fail',
-//             message: error.message
-//         });
-//     }
-// };
 
 const updateLeaveStatusController = async (req, res) => {
     const { leaveId } = req.params;
@@ -373,75 +271,16 @@ const getAllFilteredLeavesController = async (req, res) => {
 };
 
 
-
 const updateLeaveController = async (req, res) => {
     const { leaveId } = req.params;
     const file = req.file;
-    let updateData = { ...req.body };
+    const updateData = { ...req.body };
     const { userId } = req.body;
 
     try {
-        // Handle date conversion and leaveDetails regeneration
-        if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
-        if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
-
-        if (updateData.startDate && updateData.endDate) {
-            if (updateData.startDate > updateData.endDate) {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Start date cannot be after end date'
-                });
-            }
-
-            // Regenerate leaveDetails
-            let leaveDetails = generateLeaveDetails(updateData.startDate, updateData.endDate, updateData.halfDayDates );
-
-            // Apply half-day logic if provided
-            if (updateData.halfDayDates && typeof updateData.halfDayDates === 'object') {
-                Object.entries(updateData.halfDayDates).forEach(([date, session]) => {
-                    if (leaveDetails[date]) {
-                        leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
-                    }
-                });
-            }
-
-            updateData.leaveDetails = leaveDetails;
-        }
-
-        // Handle file update
-        if (file) {
-            updateData.attachment = `/uploads/${file.filename}`;
-            updateData.attachmentOriginalName = file.originalname;
-        }
-
-        const updatedLeave = await Leave.findByIdAndUpdate(
-            leaveId,
-            { $set: updateData },
-            { new: true, runValidators: true }
-        )
-
-        if (!updatedLeave) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Leave not found'
-            });
-        }
-
-        const userObjectId = new mongoose.Types.ObjectId(userId);
-
-        // Fetch the user details
-        const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
-        if (!user) {
-            throw new Error("User not found");
-        }
-
-        // Fetch leaves associated with the user
-        const leaves = await Leave.find({ userId: userObjectId })
-            .populate("userId", "name")
-            .sort({ startDate: -1 });
-
+        const { user, leaves } = await updateLeave(userId, leaveId, updateData, file);
         return res.status(StatusCodes.OK).json({
-            status: "success", message: "Leave created successfully!",
+            status: "success", message: "Leave updated successfully!",
             leaves: {
                 user: {
                     name: user.name,
@@ -453,14 +292,11 @@ const updateLeaveController = async (req, res) => {
                 data: leaves
             }
         });
-
     } catch (error) {
-        return res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
+        return res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
+
 
 
 
