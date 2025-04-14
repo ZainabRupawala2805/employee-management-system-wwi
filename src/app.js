@@ -34,10 +34,13 @@ app.use(bodyParser.json({ limit: "50mb" }));
 // Routes
 const usersRoutes = require('./routes/usersRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
-const authenticateUser = require('./middlewares/authentication');
 const roleRoutes = require('./routes/roleRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const taskRoutes = require("./routes/taskRoutes");
+const projectRoutes = require('./routes/projectRoutes');
+
+// middlewares
+const authenticateUser = require('./middlewares/authentication');
 
 // API Call
 app.use('/user', usersRoutes);
@@ -45,6 +48,7 @@ app.use('/attendance', attendanceRoutes);
 app.use('/role', roleRoutes);
 app.use('/leave', leaveRoutes);
 app.use('/task', taskRoutes);
+app.use('/project', projectRoutes);
 
 
 const startApplication = async () => {

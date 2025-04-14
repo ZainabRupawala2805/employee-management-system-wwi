@@ -40,8 +40,8 @@ const login = async (req, res) => {
         }
 
         const { token, user } = await loginUser(email, password);
-        console.log("User", user);
-        console.log("Token", token);
+        // console.log("User", user);
+        // console.log("Token", token);
 
         if (!user || !token) {
             return res.status(StatusCodes.OK).json({ status: 'fail', message: 'No user found or token found!' });
@@ -68,10 +68,10 @@ const getAllUsersList = async (req, res) => {
         if (!req.user) {
             throw new CustomError.BadRequestError("User authentication failed. No user data found.");
         }
-        console.log(req.user);
+        // console.log(req.user);
 
         const { id, role } = req.user;
-        console.log("Logged-in User:", { id, role });
+        // console.log("Logged-in User:", { id, role });
 
         const users = await getAllUsers(id, role);
         res.status(StatusCodes.OK).json({ status: "success", user: users, message: "All Users Fetched Successfully" });
@@ -187,11 +187,13 @@ const deleteUser = async (req, res) => {
 const updateStatus = async (req, res) => {
     try {
         const { userId, status } = req.body;
+        const { id, role } = req.user;
+
         if (!userId || !status) {
             throw new CustomError.BadRequestError("User ID or Status not Found")
         }
 
-        const updatedUser = await updateUserStatus(userId, status);
+        const updatedUser = await updateUserStatus(userId, status, id, role);
 
         if (!updatedUser) {
             throw new CustomError.BadRequestError("User not Found")

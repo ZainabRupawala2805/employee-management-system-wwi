@@ -25,7 +25,7 @@ const fetchUsersByRole = async (userId, role) => {
             }
 
             const objectIdUserId = new mongoose.Types.ObjectId(userId);
-            console.log("objectIdUserId:", objectIdUserId);
+            // console.log("objectIdUserId:", objectIdUserId);
 
             const loggedInUser = await User.findById(objectIdUserId).select("reportBy");
 
@@ -33,10 +33,10 @@ const fetchUsersByRole = async (userId, role) => {
                 throw new CustomError.BadRequestError("User not found");
             }
 
-            console.log("loggedInUser:", loggedInUser);
+            // console.log("loggedInUser:", loggedInUser);
 
             const reportingUserIds = loggedInUser.reportBy || [];
-            console.log("reportingUserIds", reportingUserIds);
+            // console.log("reportingUserIds", reportingUserIds);
 
             if (reportingUserIds.length === 0) {
                 throw new Error("No Reporting Users Found");
@@ -48,7 +48,7 @@ const fetchUsersByRole = async (userId, role) => {
                 .populate("reportBy", "name _id")
                 .sort({ createdAt: -1 });
 
-            console.log(users);
+            // console.log(users);
 
             if (!users.length) {
                 throw new Error("No Users Found");

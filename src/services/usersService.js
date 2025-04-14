@@ -64,7 +64,7 @@ const registerUser = async ({ name, email, contact, dateOfJoining, role, reportB
 
 const loginUser = async (email, password) => {
     const userWithPswd = await User.findOne({ email });
-    console.log("user in service: ", userWithPswd)
+    // console.log("user in service: ", userWithPswd)
     if (!userWithPswd) {
         throw new CustomError.NotFoundError(
             "Oops! The Entered Credentials Seems To Be Doesn't Exist In Our Database"
@@ -227,15 +227,16 @@ const deleteUserService = async (userId) => {
 };
 
 
-const updateUserStatus = async (userId, status) => {
+const updateUserStatus = async (userId, status, id, role) => {
     const user = await User.findById(userId);
     if (!user) {
         throw new CustomError.BadRequestError("User not found");
     }
     user.status = status;
     await user.save();
+
     //return await User.find({ role: { $ne: "Admin" } }).select("-password");
-    return user;
+    return fetchUsersByRole(id, role);
 }
 
 

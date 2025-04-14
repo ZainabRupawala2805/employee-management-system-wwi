@@ -1,0 +1,95 @@
+const Project = require('../models/Project');
+const User = require('../models/User');
+
+// Service to create a task
+const createProject = async (projectData) => {
+    try {
+        const project = new Project(projectData);
+        await project.save();
+        // Fetch and populate after saving
+        const populatedProject = await Project.findById(project._id)
+            .populate({
+                path: "manager",
+                select: "name role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            })
+            .populate({
+                path: "team",
+                select: "name role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            })
+            ;
+
+        return populatedProject;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+// Service to get all tasks
+const getAllProjects = async () => {
+    try {
+        const projects = await Project.find()
+            .populate({
+                path: "manager",
+                select: "name role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            })
+            .populate({
+                path: "team",
+                select: "name role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            })
+            ;
+
+        return projects;
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+const getAllUsers = async () => {
+    const Users = await User.find()
+        .populate("role", "name")
+        .populate("reportBy", "name")
+        ;
+
+    return Users;
+};
+
+const updateProject = async (projectId, updateData) => {
+    try {
+        const project = await Project.findByIdAndUpdate(projectId, updateData, {
+            new: true, 
+            runValidators: true, 
+        });
+        if (!project) {
+            throw new Error("Project not found");
+        }
+        return project;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+
+
+module.exports = {
+    createProject,
+    getAllProjects, 
+    getAllUsers,
+    updateProject
+}

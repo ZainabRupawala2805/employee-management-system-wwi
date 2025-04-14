@@ -22,7 +22,7 @@ const fetchAttendanceByRole = async (userId, role) => {
 
             // Filter out records where the user's role is "Founder"
             attendanceRecords = attendanceRecords.filter(record => {
-                console.log("Checking user role:", record.userId?.role?.name); // Debugging Line
+                // console.log("Checking user role:", record.userId?.role?.name); // Debugging Line
                 return record.userId?.role?.name !== "Founder";
             });
 
