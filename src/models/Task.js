@@ -39,14 +39,16 @@ const taskSchema = new mongoose.Schema(
             default: "Medium",
             required: true,
         },
-        attachment: {
-            type: String, // This will store the file path or URL
-            default: null
-        },
-        attachmentOriginalName: {
-            type: String,
-            default: null
-        },
+        attachments: [{
+            fileUrl: {
+                type: String,
+                default: null
+            },
+            originalName: {
+                type: String,
+                default: null
+            }
+        }],
         Comments: {
             type: String,
         },

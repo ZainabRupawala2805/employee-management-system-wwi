@@ -1,6 +1,5 @@
 const Task = require("../models/Task");
 
-// Service to create a task
 const createTask = async (taskData) => {
     try {
         const task = new Task(taskData);
@@ -14,8 +13,8 @@ const createTask = async (taskData) => {
 const updateTask = async (taskId, updateData) => {
     try {
         const task = await Task.findByIdAndUpdate(taskId, updateData, {
-            new: true, 
-            runValidators: true, 
+            new: true,
+            runValidators: true,
         });
         if (!task) {
             throw new Error("Task not found");
@@ -26,7 +25,6 @@ const updateTask = async (taskId, updateData) => {
     }
 };
 
-// Service to get a task by ID
 const getTaskById = async (taskId) => {
     try {
         const task = await Task.findById(taskId);
@@ -39,7 +37,6 @@ const getTaskById = async (taskId) => {
     }
 };
 
-// Service to get all tasks
 const getAllTasks = async () => {
     try {
         const tasks = await Task.find();
@@ -49,9 +46,32 @@ const getAllTasks = async () => {
     }
 };
 
+const deleteTask = async (taskId) => {
+    try {
+        const deleted = await Task.findByIdAndDelete(taskId);
+        if (!deleted) {
+            throw new Error("Task not found or already deleted");
+        }
+        return deleted;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+const getTasksByProject = async (projectId) => {
+    try {
+        const query = projectId ? { projectId } : {};
+        const tasks = await Task.find(query);
+        return tasks;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 module.exports = {
     createTask,
     updateTask,
+    deleteTask,
     getTaskById,
     getAllTasks,
+    getTasksByProject
 };
