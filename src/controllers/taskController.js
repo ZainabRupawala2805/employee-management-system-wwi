@@ -91,6 +91,23 @@ const getAllTasks = async (req, res) => {
         res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
     }
 };
+const getTasksByProject = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        const tasks = await taskService.getTasksByProject(projectId);
+        res.status(200).json({
+            success: true,
+            message: projectId ? "Tasks for the project retrieved" : "All tasks retrieved",
+            data: tasks,
+        });
+    } catch (error) {
+        res.status(StatusCodes.OK).json({
+            status: "fail",
+            message: error.message,
+        });
+    }
+};
 
 module.exports = {
     createTask,
@@ -98,4 +115,5 @@ module.exports = {
     deleteTask,
     getTaskById,
     getAllTasks,
+    getTasksByProject
 };
