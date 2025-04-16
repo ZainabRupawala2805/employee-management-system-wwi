@@ -7,13 +7,13 @@ const createTask = async (req, res) => {
         const taskData = req.body;
         const task = await taskService.createTask(taskData);
         res.status(201).json({
-            success: true,
+            status: "success",
             message: "Task created successfully",
             data: task,
         });
     } catch (error) {
         res.status(200).json({
-            success: false,
+            status: "fail",
             message: error.message,
         });
     }

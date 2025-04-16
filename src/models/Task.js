@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 
 const taskSchema = new mongoose.Schema(
     {
-        userId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true
-        },
         title: {
             type: String,
             required: true
@@ -16,32 +11,41 @@ const taskSchema = new mongoose.Schema(
         },
         dateAssigned: {
             type: Date,
-            required: true
+            required: true,
+            default: new Date()
         },
         dateDue: {
             type: Date,
-            required: true
         },
-        status: {
+        sectionId: {
             type: String,
-            enum: ["To-Do", "In Progress", "Completed"],
+            // enum: ["To-Do", "In Progress", "Completed", "Delayed", "On Hold"],
             required: true,
-            default: "To-Do"
+            // default: "To-Do"
         },
-        assignedTo: {
+        team: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
-        },
-        assignedBy: {
+        }],
+        projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Project",
+            required: true
         },
         priority: {
             type: String,
             enum: ["High", "Medium", "Low", "Urgent"],
             default: "Medium",
             required: true,
+        },
+        attachment: {
+            type: String, // This will store the file path or URL
+            default: null
+        },
+        attachmentOriginalName: {
+            type: String,
+            default: null
         },
         Comments: {
             type: String,
