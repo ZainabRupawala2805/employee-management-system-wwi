@@ -1,5 +1,7 @@
 const Project = require('../models/Project');
 const User = require('../models/User');
+const Task = require("../models/Task");
+
 
 // Service to create a task
 const createProject = async (projectData) => {
@@ -33,26 +35,54 @@ const createProject = async (projectData) => {
 };
 
 // Service to get all tasks
-const getAllProjects = async () => {
+const getAllProjects = async (userId, role) => {
     try {
-        const projects = await Project.find()
-            .populate({
-                path: "manager",
-                select: "name role",
-                populate: {
-                    path: "role",
-                    select: "name",
-                },
+        let projects;
+
+        if (role === "Founder") {
+            // Founder can access all projects
+            projects = await Project.find()
+                .populate({
+                    path: "manager",
+                    select: "name role",
+                    populate: {
+                        path: "role",
+                        select: "name",
+                    },
+                })
+                .populate({
+                    path: "team",
+                    select: "name role",
+                    populate: {
+                        path: "role",
+                        select: "name",
+                    },
+                });
+        } else {
+            // Others get only projects where they are manager or in the team
+            projects = await Project.find({
+                $or: [
+                    { manager: userId },
+                    { team: userId }
+                ]
             })
-            .populate({
-                path: "team",
-                select: "name role",
-                populate: {
-                    path: "role",
-                    select: "name",
-                },
-            })
-            ;
+                .populate({
+                    path: "manager",
+                    select: "name role",
+                    populate: {
+                        path: "role",
+                        select: "name",
+                    },
+                })
+                .populate({
+                    path: "team",
+                    select: "name role",
+                    populate: {
+                        path: "role",
+                        select: "name",
+                    },
+                });
+        }
 
         return projects;
 
@@ -73,8 +103,8 @@ const getAllUsers = async () => {
 const updateProject = async (projectId, updateData) => {
     try {
         const project = await Project.findByIdAndUpdate(projectId, updateData, {
-            new: true, 
-            runValidators: true, 
+            new: true,
+            runValidators: true,
         });
         if (!project) {
             throw new Error("Project not found");
@@ -85,11 +115,25 @@ const updateProject = async (projectId, updateData) => {
     }
 };
 
+const deleteProject = async (projectId) => {
+    try {
+        // First, delete all tasks associated with the project
+        await Task.deleteMany({ projectId });
+
+        // Then, delete the project itself
+        await Project.findByIdAndDelete(projectId);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+
 
 
 module.exports = {
     createProject,
-    getAllProjects, 
+    getAllProjects,
     getAllUsers,
-    updateProject
+    updateProject,
+    deleteProject
 }

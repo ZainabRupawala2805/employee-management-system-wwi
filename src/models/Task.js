@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const moment = require('moment-timezone');
 
 const taskSchema = new mongoose.Schema(
     {
@@ -12,9 +13,9 @@ const taskSchema = new mongoose.Schema(
         dateAssigned: {
             type: Date,
             required: true,
-            default: new Date()
+            default: () => moment().tz('Asia/Kolkata').toDate() // IST
         },
-        dateDue: {
+        dueDate: {
             type: Date,
         },
         sectionId: {
@@ -39,6 +40,10 @@ const taskSchema = new mongoose.Schema(
             default: "Medium",
             required: true,
         },
+        editedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
         attachments: [{
             fileUrl: {
                 type: String,
@@ -49,9 +54,26 @@ const taskSchema = new mongoose.Schema(
                 default: null
             }
         }],
-        Comments: {
-            type: String,
-        },
+        comments: [
+            {
+                name: {
+                    type: String,
+                    required: true
+                },
+                message: {
+                    type: String,
+                    required: true
+                },
+                time: {
+                    type: Date,
+                    default: Date.now
+                },
+                replyTo: {
+                    name: {type: String, default: null},
+                    message: {type: String, default: null}
+                }
+            }
+        ]
     },
     {
         timestamps: true,

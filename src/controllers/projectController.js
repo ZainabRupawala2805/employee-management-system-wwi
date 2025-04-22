@@ -21,7 +21,8 @@ const createProject = async (req, res) => {
 // Controller to get all tasks
 const getAllProjects = async (req, res) => {
     try {
-        const projects = await projectService.getAllProjects();
+        const {id, role} = req.user;
+        const projects = await projectService.getAllProjects(id, role);
         res.status(200).json({
             status: "success",
             message: "Projects retrieved successfully",
@@ -61,6 +62,25 @@ const updateProject = async (req, res) => {
     }
 };
 
+const deleteProject = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        await projectService.deleteProject(projectId);
+
+        return res.status(200).json({
+            status: "success",
+            message: "Project and associated tasks deleted successfully",
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message,
+        });
+    }
+};
+
+
 
 
 module.exports = {
@@ -68,5 +88,6 @@ module.exports = {
     getAllProjects,
     getAllUsers,
     updateProject,
+    deleteProject
 }
 

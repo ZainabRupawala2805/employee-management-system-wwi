@@ -50,6 +50,8 @@ app.use('/leave', leaveRoutes);
 app.use('/task', taskRoutes);
 app.use('/project', projectRoutes);
 
+// Serve static files from uploads folder
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 const startApplication = async () => {
     try {

@@ -27,7 +27,16 @@ const updateTask = async (taskId, updateData) => {
 
 const getTaskById = async (taskId) => {
     try {
-        const task = await Task.findById(taskId);
+        const task = await Task.findById(taskId)
+            .populate({
+                path: "team",
+                select: "name role id",
+                populate: {
+                    path: "role",
+                    select: "name id",
+                },
+            })
+            ;
         if (!task) {
             throw new Error("Task not found");
         }
@@ -57,15 +66,42 @@ const deleteTask = async (taskId) => {
         throw new Error(error.message);
     }
 };
-const getTasksByProject = async (projectId) => {
+const getTasksByProject = async (projectId, userId) => {
     try {
-        const query = projectId ? { projectId } : {};
-        const tasks = await Task.find(query);
+        const query = projectId ? { projectId } : { team: userId };
+        const tasks = await Task.find(query)
+            .populate({
+                path: "team",
+                select: "name role id",
+                populate: {
+                    path: "role",
+                    select: "name id",
+                },
+            });
         return tasks;
     } catch (error) {
         throw new Error(error.message);
     }
 };
+
+const removeAttachmentFromTask = async (taskId, attachmentId) => {
+    const task = await Task.findById(taskId);
+    if (!task) {
+        throw new Error('Task not found');
+    }
+
+    const attachmentIndex = task.attachments.findIndex(att => att._id.toString() === attachmentId);
+    if (attachmentIndex === -1) {
+        throw new Error('Attachment not found');
+    }
+
+    const removedAttachment = task.attachments.splice(attachmentIndex, 1)[0];
+
+    await task.save();
+
+    return removedAttachment;
+};
+
 
 module.exports = {
     createTask,
@@ -73,5 +109,6 @@ module.exports = {
     deleteTask,
     getTaskById,
     getAllTasks,
-    getTasksByProject
+    getTasksByProject,
+    removeAttachmentFromTask
 };
