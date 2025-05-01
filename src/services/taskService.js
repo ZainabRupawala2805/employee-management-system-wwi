@@ -66,9 +66,19 @@ const deleteTask = async (taskId) => {
         throw new Error(error.message);
     }
 };
-const getTasksByProject = async (projectId, userId) => {
+
+const getTasksByProject = async (projectId, userId, role) => {
     try {
-        const query = projectId ? { projectId } : { team: userId };
+        let query;
+
+        if (projectId) {
+            query = { projectId };
+        } else if (role === "Founder") {
+            query = {}; // fetch all tasks
+        } else {
+            query = { team: userId };
+        }
+
         const tasks = await Task.find(query)
             .populate({
                 path: "team",
@@ -78,11 +88,13 @@ const getTasksByProject = async (projectId, userId) => {
                     select: "name id",
                 },
             });
+
         return tasks;
     } catch (error) {
         throw new Error(error.message);
     }
 };
+
 
 const removeAttachmentFromTask = async (taskId, attachmentId) => {
     const task = await Task.findById(taskId);

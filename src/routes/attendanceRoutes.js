@@ -10,5 +10,7 @@ router.put('/update-attendance/:id', authenticateUser, attendanceController.upda
 router.get('/get-all-attendance', authenticateUser, attendanceController.getAllEmployeesAttendance);
 router.get('/single-user-attendance/:userId', authenticateUser, attendanceController.getEmployeeAttendance);
 router.post('/approval', authenticateUser, attendanceController.approveOrRejectAttendance);
+router.delete('/delete-attendance/:id', authenticateUser, attendanceController.deleteAttendance);
+
 
 module.exports = router;

@@ -16,7 +16,13 @@ const storage = multer.diskStorage({
 // File filter configuration
 const fileFilter = (req, file, cb) => {
     // Accept all file types or add specific validation
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'application/pdf',
+        'application/vnd.ms-powerpoint',        // for .ppt
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' // for .pptx
+    ];
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {

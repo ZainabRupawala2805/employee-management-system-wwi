@@ -113,9 +113,9 @@ const getAllTasks = async (req, res) => {
 const getTasksByProject = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const userId = req.user.id;
+        const { id, role }= req.user;
 
-        const tasks = await taskService.getTasksByProject(projectId, userId);
+        const tasks = await taskService.getTasksByProject(projectId, id, role);
         res.status(200).json({
             status: "success",
             message: projectId ? "Tasks for the project retrieved" : "All tasks retrieved",

@@ -1,6 +1,6 @@
 const express = require("express");
-const { createLeaveController, updateLeaveStatusController, getLeaveByIdController, getLeavesByUserIdController, getAllFilteredLeavesController, updateLeaveController } = require("../controllers/leaveController");
 const authenticateUser = require("../middlewares/authentication");
+const { createLeaveController, updateLeaveStatusController, getLeaveByIdController, getLeavesByUserIdController, getAllFilteredLeavesController, updateLeaveController } = require("../controllers/leaveController");
 const upload = require('../middlewares/uploadFile');
 
 const router = express.Router();

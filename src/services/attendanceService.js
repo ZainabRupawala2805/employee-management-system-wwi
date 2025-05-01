@@ -1,5 +1,6 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
+const Leave = require('../models/Leave');
 const CustomError = require('../errors');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
@@ -80,7 +81,7 @@ const getAllAttendance = async (userId, role) => {
     return await fetchAttendanceByRole(userId, role);
 };
 
-const updateAttendance = async (id, data) => {
+const updateAttendance = async (id, role, data) => {
     // Find the attendance record
     const attendance = await Attendance.findById(id);
 
@@ -89,6 +90,7 @@ const updateAttendance = async (id, data) => {
     }
 
     // Update fields from request body
+    if (data.date) attendance.date = new Date(data.date); // <-- ✅ Add this line
     if (data.clocksIn) attendance.clocksIn = new Date(data.clocksIn);
     if (data.clocksOut) attendance.clocksOut = new Date(data.clocksOut);
 
@@ -99,7 +101,11 @@ const updateAttendance = async (id, data) => {
     }
 
     // Change status to "In Approval" when user edits attendance
-    attendance.status = "In Approval";
+    if (role !== "Founder") {
+        attendance.status = "In Approval";
+    } else {
+        attendance.status = "Present";
+    }
 
     // Save the updated document
     const updatedRecord = await attendance.save();
@@ -107,7 +113,21 @@ const updateAttendance = async (id, data) => {
     // Fetch and return all attendance records for the user
     const attendanceRecords = await Attendance.find({ userId: updatedRecord.userId })
         .populate("userId", "name")
-        .sort({ date: -1 });
+        .sort({ updatedAt: -1 });
+
+    return attendanceRecords;
+};
+
+const deleteAttendanceService = async (id) => {
+    const attendance = await Attendance.findById(id);
+
+    const deletedAttendance = await Attendance.findByIdAndDelete(id);
+    if (!deletedAttendance) {
+        throw new CustomError.BadRequestError("User not found!")
+    }
+    const attendanceRecords = await Attendance.find({ userId: attendance.userId })
+    .populate("userId", "name")
+    .sort({ date: -1 });
 
     return attendanceRecords;
 };
@@ -219,5 +239,6 @@ module.exports = {
     getAttendance,
     updateAttendance,
     getAllAttendance,
-    approveOrRejectAttendance
+    approveOrRejectAttendance,
+    deleteAttendanceService
 }

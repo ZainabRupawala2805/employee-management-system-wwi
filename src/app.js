@@ -38,6 +38,7 @@ const roleRoutes = require('./routes/roleRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const taskRoutes = require("./routes/taskRoutes");
 const projectRoutes = require('./routes/projectRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // middlewares
 const authenticateUser = require('./middlewares/authentication');
@@ -49,6 +50,7 @@ app.use('/role', roleRoutes);
 app.use('/leave', leaveRoutes);
 app.use('/task', taskRoutes);
 app.use('/project', projectRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 // Serve static files from uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));

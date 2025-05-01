@@ -109,13 +109,14 @@ const getAllEmployeesAttendance = async (req, res) => {
 const updateAttendance = async (req, res) => {
     try {
         const { id } = req.params;
+        const role = req.user.role;
         const data = req.body;
 
         if (!id || !data ) {
             throw new CustomError.BadRequestError("All fields are mandatory");
         }
 
-        const attendance = await attendanceService.updateAttendance(id, data);
+        const attendance = await attendanceService.updateAttendance(id, role, data);
         
         res.status(StatusCodes.OK).json({ 
             status: 'success', 
@@ -147,6 +148,22 @@ const approveOrRejectAttendance = async (req, res) => {
     }
 };
 
+const deleteAttendance = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            throw new CustomError.BadRequestError("User ID not Found")
+        }
+
+        const attendance = await attendanceService.deleteAttendanceService(id);
+        res.status(StatusCodes.OK).json({ attendance, status: "success", message: "Attendance Deleted Successfully!" });
+
+    } catch (error) {
+        res.status(StatusCodes.OK).json({ status: "fail", message: error.message });
+    }
+};
+
 
 
 module.exports = {
@@ -155,5 +172,6 @@ module.exports = {
     getEmployeeAttendance,
     getAllEmployeesAttendance,
     updateAttendance,
-    approveOrRejectAttendance
+    approveOrRejectAttendance,
+    deleteAttendance
 }

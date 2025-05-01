@@ -39,52 +39,50 @@ const getAllProjects = async (userId, role) => {
     try {
         let projects;
 
-        if (role === "Founder") {
-            // Founder can access all projects
-            projects = await Project.find()
-                .populate({
-                    path: "manager",
-                    select: "name role",
-                    populate: {
-                        path: "role",
-                        select: "name",
-                    },
-                })
-                .populate({
-                    path: "team",
-                    select: "name role",
-                    populate: {
-                        path: "role",
-                        select: "name",
-                    },
-                });
-        } else {
-            // Others get only projects where they are manager or in the team
-            projects = await Project.find({
+        const projectQuery = role === "Founder"
+            ? {}
+            : {
                 $or: [
                     { manager: userId },
                     { team: userId }
                 ]
-            })
-                .populate({
-                    path: "manager",
-                    select: "name role",
-                    populate: {
-                        path: "role",
-                        select: "name",
-                    },
-                })
-                .populate({
-                    path: "team",
-                    select: "name role",
-                    populate: {
-                        path: "role",
-                        select: "name",
-                    },
-                });
-        }
+            };
 
-        return projects;
+        projects = await Project.find(projectQuery)
+            .populate({
+                path: "manager",
+                select: "name role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            })
+            .populate({
+                path: "team",
+                select: "name role",
+                populate: {
+                    path: "role",
+                    select: "name",
+                },
+            });
+
+        // Fetch task counts
+        const projectWithTaskCounts = await Promise.all(projects.map(async (project) => {
+            const totalTasks = await Task.countDocuments({ projectId: project._id });
+            const section504Tasks = await Task.countDocuments({ projectId: project._id, sectionId: "504" });
+
+            // Calculate progress
+            const progress = totalTasks === 0 ? 0 : Math.round((section504Tasks / totalTasks) * 100);
+
+            return {
+                ...project.toObject(),
+                totalTasks,
+                section504Tasks,
+                progress, // add progress field here
+            };
+        }));
+        
+        return projectWithTaskCounts;
 
     } catch (error) {
         throw new Error(error.message);
