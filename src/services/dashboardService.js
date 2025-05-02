@@ -67,7 +67,7 @@ const combineData = async (userId) => {
 }
 
 const generateMonthlyCal = async (userId) => {
-    const WORK_HOURS_THRESHOLD = 8 * 60; // 8 hours considered as full day but in minutes..
+    const WORK_HOURS_THRESHOLD = 8 ; // 8 hours considered as full day but in minutes..
     const LATE_THRESHOLD_HOUR = 11; // 11 AM considered late
 
     const currentMonthStart = moment().startOf('month').toDate();
@@ -125,7 +125,7 @@ const generateMonthlyCal = async (userId) => {
 
             // Now also calculate early out minutes
             const totalWorkedMinutes = totalHours * 60;
-            const remainingMinutes = Math.round(WORK_HOURS_THRESHOLD - totalWorkedMinutes);
+            const remainingMinutes = Math.round((WORK_HOURS_THRESHOLD * 60) - totalWorkedMinutes);
             // console.log("remainingMinutes: ", remainingMinutes);            
 
             if (remainingMinutes > 0) {
