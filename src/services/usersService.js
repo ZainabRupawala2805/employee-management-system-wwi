@@ -130,7 +130,7 @@ const getUserById = async (userId) => {
     return user;
 };
 
-const updateUserService = async (userId, updateFields) => {
+const updateUserService = async (userId, loggedInId, updateFields) => {
     const { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role } = updateFields;
 
     try {
@@ -175,7 +175,7 @@ const updateUserService = async (userId, updateFields) => {
             throw new CustomError.NotFoundError("User not found or could not be updated");
         }
 
-        const user = await User.find()
+        const user = await User.find({ _id: { $ne: loggedInId } })
             .select('-password')  // Exclude password
             .populate("role", "name _id")  // Populate role with name and _id
             .populate("reportBy", "name _id")
