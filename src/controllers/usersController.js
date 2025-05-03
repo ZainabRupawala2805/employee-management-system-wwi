@@ -95,6 +95,8 @@ const fetchSingleUser = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { userId } = req.params;
+        const loggedInId = req.user.id;
+
         // Ensure userId exists
         if (!userId) {
             return res.status(StatusCodes.OK).json({
@@ -118,7 +120,7 @@ const updateUser = async (req, res) => {
         }
 
         // Call the service function to update user
-        const updatedUser = await updateUserService(userId, { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role });
+        const updatedUser = await updateUserService(userId, loggedInId, loggedInRole, { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role });
 
         if (!updatedUser) {
             return res.status(StatusCodes.OK).json({
