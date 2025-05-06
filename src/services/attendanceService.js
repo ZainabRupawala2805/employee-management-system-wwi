@@ -21,8 +21,8 @@ const markAttendance = async ({ userId, ip, location }) => {
         date,
         clocksIn: new Date(),
         status: 'Present',
-        IP_Address: ip,
-        ...(location && { location }) // only include location if present
+        clockInIP: ip,
+        ...(location && { clockInLocation: location })
     });
 
     await attendance.save();
@@ -52,10 +52,10 @@ const markCheckout = async ({ userId, ip, location }) => {
     attendance.totalHours = ((attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60)).toFixed(3);
     // console.log(attendance.totalHours);
 
-    attendance.IP_Address = ip;
+    attendance.clockOutIP = ip;
 
     if(location) {
-        attendance.location = location;
+        attendance.clockOutLocation = location;
     }
 
     await attendance.save();

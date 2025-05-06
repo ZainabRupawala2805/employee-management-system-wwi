@@ -25,11 +25,19 @@ const attendanceSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
-        location: {
+        clockInLocation: {
             type: Object,
             required: false
         },
-        IP_Address: {
+        clockOutLocation: {
+            type: Object,
+            required: false
+        },
+        clockInIP: {
+            type: String,
+            required: false
+        },
+        clockOutIP: {
             type: String,
             required: false
         },
