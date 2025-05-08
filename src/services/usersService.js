@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Roles');
-const bcrypt = require('bcrypt');
+// const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const CustomError = require('../errors');
@@ -28,8 +28,8 @@ const registerUser = async ({ name, email, contact, dateOfJoining, role, reportB
     const password = generatePassword(name);
     console.log(password);
 
-    const salt = await bcrypt.genSalt(10);
-    const hashPswd = await bcrypt.hash(password, salt);
+    // const salt = await bcrypt.genSalt(10);
+    // const hashPswd = await bcrypt.hash(password, salt);
 
     // Find role
     let roleData = await Role.findOne({ name: role });
@@ -41,7 +41,8 @@ const registerUser = async ({ name, email, contact, dateOfJoining, role, reportB
         name,
         email,
         contact,
-        password: hashPswd,
+        // password: hashPswd,
+        password,
         dateOfJoining,
         role: roleData ? roleData._id : null,  // Store role as roleId
         reportBy: reportByIds,
@@ -62,6 +63,58 @@ const registerUser = async ({ name, email, contact, dateOfJoining, role, reportB
         .sort({ createdAt: -1 });
 };
 
+// const loginUser = async (email, password) => {
+//     const userWithPswd = await User.findOne({ email });
+//     // console.log("user in service: ", userWithPswd)
+//     if (!userWithPswd) {
+//         throw new CustomError.NotFoundError(
+//             "Oops! The Entered Credentials Seems To Be Doesn't Exist In Our Database"
+//         );
+//     }
+
+//     if (userWithPswd.status !== "Active") {
+//         throw new CustomError.BadRequestError("You are no longer a user of Web Whiz Infosys!")
+//     }
+
+//     // console.log("Stored user password: ", user.password);
+//     // console.log("Entered password: ", password);
+//     // console.log("JWT_SECRET:", process.env.JWT_SECRET); // Check if it's properly set
+
+//     const isPswdMatch = await bcrypt.compare(password, userWithPswd.password);
+//     // console.log("Password Match Result:", isPswdMatch);
+
+//     if (!isPswdMatch) {
+//         throw new CustomError.UnauthenticatedError("User Password Incorrect");
+//     }
+
+//     // console.log("process.env.JWT_SECRET: ", process.env.JWT_SECRET);
+
+//     if (!process.env.JWT_SECRET) {
+//         throw new CustomError.NotFoundError("JWT_SECRET is not defined in environment variables");
+//     }
+//     // Now fetch user again with required fields but without the password
+//     const user = await User.findById(userWithPswd._id)
+//         .select('-password')  // Exclude password
+//         .populate("role", "name _id")  // Populate role with name and _id
+//         .populate("reportBy", "name _id");  // Populate reportBy with name and _id
+
+//     // Extract role name directly from populated data
+//     const roleName = user.role ? user.role.name : "Unknown";
+
+//     // Create JWT token including role name
+//     const token = await jwt.sign(
+//         { id: user.id, email: user.email, role: roleName },  // Added role name
+//         process.env.JWT_SECRET,
+//         { expiresIn: '7d' }
+//     );
+//     console.log('token in service: ', token);
+
+//     return {
+//         token,
+//         user
+//     }
+// }
+
 const loginUser = async (email, password) => {
     const userWithPswd = await User.findOne({ email });
     // console.log("user in service: ", userWithPswd)
@@ -75,18 +128,9 @@ const loginUser = async (email, password) => {
         throw new CustomError.BadRequestError("You are no longer a user of Web Whiz Infosys!")
     }
 
-    // console.log("Stored user password: ", user.password);
-    // console.log("Entered password: ", password);
-    // console.log("JWT_SECRET:", process.env.JWT_SECRET); // Check if it's properly set
-
-    const isPswdMatch = await bcrypt.compare(password, userWithPswd.password);
-    // console.log("Password Match Result:", isPswdMatch);
-
-    if (!isPswdMatch) {
+    if (password !== userWithPswd.password) {
         throw new CustomError.UnauthenticatedError("User Password Incorrect");
     }
-
-    // console.log("process.env.JWT_SECRET: ", process.env.JWT_SECRET);
 
     if (!process.env.JWT_SECRET) {
         throw new CustomError.NotFoundError("JWT_SECRET is not defined in environment variables");
@@ -163,8 +207,8 @@ const updateUserService = async (userId, loggedInId, updateFields) => {
                 email,
                 contact,
                 dateOfJoining,
-                sickLeave, 
-                paidLeave, 
+                sickLeave,
+                paidLeave,
                 reportBy: newreportByIds, // Directly store the array of IDs
                 role: roleData._id
             },
