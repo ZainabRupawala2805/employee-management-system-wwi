@@ -81,42 +81,97 @@ const getAllAttendance = async (userId, role) => {
     return await fetchAttendanceByRole(userId, role);
 };
 
+// const updateAttendance = async (id, role, data) => {
+//     // Find the attendance record
+//     const attendance = await Attendance.findById(id);
+
+//     if (!attendance) {
+//         throw new CustomError.NotFoundError("Attendance record not found!");
+//     }
+
+//     // Update fields from request body
+//     if (data.date) attendance.date = new Date(data.date); // <-- ✅ Add this line
+//     if (data.clocksIn) attendance.clocksIn = new Date(data.clocksIn);
+//     if (data.clocksOut) attendance.clocksOut = new Date(data.clocksOut);
+
+//     // Calculate totalHours if both clockIn & clockOut exist
+//     if (attendance.clocksIn && attendance.clocksOut) {
+//         attendance.totalHours = Math.abs((attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60)); // Convert ms to hours
+//         attendance.totalHours = parseFloat(attendance.totalHours.toFixed(2)); // Keep 2 decimal places
+//     }
+
+//     // Change status to "In Approval" when user edits attendance
+//     if (role !== "Founder") {
+//         attendance.status = "In Approval";
+//     } else {
+//         attendance.status = "Present";
+//     }
+
+//     // Save the updated document
+//     const updatedRecord = await attendance.save();
+
+//     // Fetch and return all attendance records for the user
+//     const attendanceRecords = await Attendance.find({ userId: updatedRecord.userId })
+//         .populate("userId", "name")
+//         .sort({ updatedAt: -1 });
+
+//     return attendanceRecords;
+// };
+
 const updateAttendance = async (id, role, data) => {
-    // Find the attendance record
     const attendance = await Attendance.findById(id);
 
     if (!attendance) {
         throw new CustomError.NotFoundError("Attendance record not found!");
     }
 
-    // Update fields from request body
-    if (data.date) attendance.date = new Date(data.date); // <-- ✅ Add this line
-    if (data.clocksIn) attendance.clocksIn = new Date(data.clocksIn);
-    if (data.clocksOut) attendance.clocksOut = new Date(data.clocksOut);
+    // Update date if passed
+    if (data.date) {
+        attendance.date = new Date(data.date);
+    }
 
-    // Calculate totalHours if both clockIn & clockOut exist
+    // === Update clocksIn and keep backup of the last value ===
+    if (data.clocksIn) {
+        const newClocksIn = new Date(data.clocksIn);
+        const oldClocksIn = attendance.clocksIn;
+
+        if (oldClocksIn && newClocksIn.getTime() !== oldClocksIn.getTime()) {
+            attendance.previousClocksIn = oldClocksIn; // Always overwrite with last clockIn
+            attendance.clocksIn = newClocksIn;
+        }
+    }
+
+    // === Update clocksOut and keep backup of the last value ===
+    if (data.clocksOut) {
+        const newClocksOut = new Date(data.clocksOut);
+        const oldClocksOut = attendance.clocksOut;
+
+        if (oldClocksOut && newClocksOut.getTime() !== oldClocksOut.getTime()) {
+            attendance.previousClocksOut = oldClocksOut; // Always overwrite with last clockOut
+            attendance.clocksOut = newClocksOut;
+        }
+    }
+
+    // === Calculate totalHours if both times are available ===
     if (attendance.clocksIn && attendance.clocksOut) {
-        attendance.totalHours = Math.abs((attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60)); // Convert ms to hours
-        attendance.totalHours = parseFloat(attendance.totalHours.toFixed(2)); // Keep 2 decimal places
+        attendance.totalHours = Math.abs(
+            (attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60)
+        );
+        attendance.totalHours = parseFloat(attendance.totalHours.toFixed(2));
     }
 
-    // Change status to "In Approval" when user edits attendance
-    if (role !== "Founder") {
-        attendance.status = "In Approval";
-    } else {
-        attendance.status = "Present";
-    }
+    // === Set status based on role ===
+    attendance.status = role !== "Founder" ? "In Approval" : "Present";
 
-    // Save the updated document
     const updatedRecord = await attendance.save();
 
-    // Fetch and return all attendance records for the user
     const attendanceRecords = await Attendance.find({ userId: updatedRecord.userId })
         .populate("userId", "name")
         .sort({ updatedAt: -1 });
 
     return attendanceRecords;
 };
+
 
 const deleteAttendanceService = async (id) => {
     const attendance = await Attendance.findById(id);

@@ -13,13 +13,15 @@ const attendanceSchema = new mongoose.Schema(
         },
         clocksIn: {
             type: Date,
-            // required: true,
-            // default: Date.now,
+        },
+        previousClocksIn: {
+            type: Date
         },
         clocksOut: {
             type: Date,
-            // required: true,
-            // default: Date.now,
+        },
+        previousClocksOut: {
+            type: Date
         },
         totalHours: {
             type: Number,

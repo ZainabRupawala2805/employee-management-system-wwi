@@ -120,7 +120,7 @@ const updateUser = async (req, res) => {
         }
 
         // Call the service function to update user
-        const updatedUser = await updateUserService(userId, loggedInId, loggedInRole, { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role });
+        const updatedUser = await updateUserService(userId, loggedInId, { name, email, contact, dateOfJoining, sickLeave, paidLeave, reportBy, role });
 
         if (!updatedUser) {
             return res.status(StatusCodes.OK).json({
