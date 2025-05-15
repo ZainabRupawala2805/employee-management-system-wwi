@@ -112,6 +112,8 @@ const updateAttendance = async (req, res) => {
         const role = req.user.role;
         const data = req.body;
 
+        console.log("data: " , data);        
+
         if (!id || !data ) {
             throw new CustomError.BadRequestError("All fields are mandatory");
         }

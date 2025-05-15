@@ -33,6 +33,9 @@ const leaveSchema = new mongoose.Schema(
             type: Object, 
             required: true,
         },
+        leaveHistory: {
+            type: Object
+        },
         attachment: {
             type: String, // This will store the file path or URL
             default: null

@@ -276,6 +276,7 @@ const updateLeaveController = async (req, res) => {
     const file = req.file;
     const updateData = { ...req.body };
     const { userId } = req.body;
+    console.log(updateData);    
 
     try {
         const { user, leaves } = await updateLeave(userId, leaveId, updateData, file);

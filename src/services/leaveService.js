@@ -321,6 +321,97 @@ const getFilteredLeaves = async (userId, userRole, reportBy) => {
 };
 
 
+// const updateLeave = async (userId, leaveId, updateData, file) => {
+//     if (!mongoose.Types.ObjectId.isValid(leaveId)) {
+//         throw new Error('Invalid leave ID format');
+//     }
+
+//     const existingLeave = await Leave.findById(leaveId);
+//     if (!existingLeave) {
+//         throw new Error('Leave not found');
+//     }
+
+//     if (updateData.status && updateData.status !== existingLeave.status) {
+//         throw new Error('Use the status update API to change leave status');
+//     }
+
+//     // Convert date strings to Date objects
+//     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+//     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+
+//     const startDate = updateData.startDate || existingLeave.startDate;
+//     const endDate = updateData.endDate || existingLeave.endDate;
+
+//     if (new Date(startDate) > new Date(endDate)) {
+//         throw new Error('Start date cannot be after end date');
+//     }
+
+//     // 1. Regenerate leaveDetails
+//     let newLeaveDetails;
+
+//     // 2. Apply any half-day overrides
+//     if (updateData.halfDayDates) {
+//         let halfDayObj = typeof updateData.halfDayDates === 'string'
+//             ? JSON.parse(updateData.halfDayDates)
+//             : updateData.halfDayDates;
+
+//         Object.entries(halfDayObj).forEach(([date, session]) => {
+//             if (newLeaveDetails[date]) {
+//                 newLeaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
+//             }
+//         });
+//     }
+
+//     // 3. Track differences in leaveDetails and build leaveHistory
+//     const oldLeaveDetails = existingLeave.leaveDetails || {};
+//     const leaveHistory = {};
+
+//     for (const date in newLeaveDetails) {
+//         const oldValue = oldLeaveDetails[date];
+//         const newValue = newLeaveDetails[date];
+//         if (oldValue && oldValue !== newValue) {
+//             leaveHistory[date] = oldValue;
+//         }
+//     }
+
+//     updateData.leaveDetails = newLeaveDetails;
+
+//     // Only store leaveHistory if there are changes
+//     if (Object.keys(leaveHistory).length > 0) {
+//         updateData.leaveHistory = {
+//             ...existingLeave.leaveHistory, // Preserve existing history
+//             ...leaveHistory,
+//         };
+//     }
+
+//     // 4. Attach new file if present
+//     if (file) {
+//         updateData.attachment = `/uploads/${file.filename}`;
+//         updateData.attachmentOriginalName = file.originalname;
+//     }
+
+//     // 5. Save the updated leave
+//     await Leave.findByIdAndUpdate(
+//         leaveId,
+//         { $set: updateData },
+//         { new: true, runValidators: true }
+//     );
+
+//     // 6. Return updated user + leaves
+//     const userObjectId = new mongoose.Types.ObjectId(userId);
+//     const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
+//     if (!user) {
+//         throw new Error("User not found");
+//     }
+
+//     const leaves = await Leave.find({ userId: userObjectId })
+//         .populate("userId", "name")
+//         .sort({ startDate: -1 });
+
+//     return { user, leaves };
+// };
+
+
 const updateLeave = async (userId, leaveId, updateData, file) => {
     if (!mongoose.Types.ObjectId.isValid(leaveId)) {
         throw new Error('Invalid leave ID format');
@@ -334,12 +425,10 @@ const updateLeave = async (userId, leaveId, updateData, file) => {
     if (updateData.status && updateData.status !== existingLeave.status) {
         throw new Error('Use the status update API to change leave status');
     }
-
     // Convert date strings to Date objects
     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
 
-    // Validate and regenerate leaveDetails
     const startDate = updateData.startDate || existingLeave.startDate;
     const endDate = updateData.endDate || existingLeave.endDate;
 
@@ -347,49 +436,66 @@ const updateLeave = async (userId, leaveId, updateData, file) => {
         throw new Error('Start date cannot be after end date');
     }
 
-    // Regenerate leave details
-    let leaveDetails = generateLeaveDetails(startDate, endDate);
+    // Generate leaveDetails based on date range
+    let newLeaveDetails = generateLeaveDetails(startDate, endDate);
 
+    // Apply half-day changes
     if (updateData.halfDayDates) {
-        let halfDayObj = typeof updateData.halfDayDates === 'string'
+        const halfDayDates = typeof updateData.halfDayDates === 'string'
             ? JSON.parse(updateData.halfDayDates)
             : updateData.halfDayDates;
 
-        Object.entries(halfDayObj).forEach(([date, session]) => {
-            if (leaveDetails[date]) {
-                leaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
+        for (const [date, session] of Object.entries(halfDayDates)) {
+            if (newLeaveDetails[date]) {
+                newLeaveDetails[date] = session === "First Half" || session === "Second Half" ? session : "Full Day";
             }
-        });
+        }
     }
 
-    updateData.leaveDetails = leaveDetails;
+    // Compare with old leaveDetails
+    const oldLeaveDetails = existingLeave.leaveDetails || {};
+    const oldLeaveHistory = existingLeave.leaveHistory || {};
+    const leaveHistory = { ...oldLeaveHistory };
 
-    // Attach new file if present
+    for (const date in newLeaveDetails) {
+        const oldVal = oldLeaveDetails[date];
+        const newVal = newLeaveDetails[date];
+
+        if (oldVal && newVal && oldVal !== newVal) {
+            leaveHistory[date] = oldVal;  // only store last value
+        }
+    }
+
+    updateData.leaveDetails = newLeaveDetails;
+    if (Object.keys(leaveHistory).length > 0) {
+        updateData.leaveHistory = leaveHistory;
+    }
+
+    // 4. Attach new file if present
     if (file) {
         updateData.attachment = `/uploads/${file.filename}`;
         updateData.attachmentOriginalName = file.originalname;
     }
 
+    // 5. Save the updated leave
     await Leave.findByIdAndUpdate(
         leaveId,
         { $set: updateData },
         { new: true, runValidators: true }
     );
 
+    // 6. Return updated user + leaves
     const userObjectId = new mongoose.Types.ObjectId(userId);
-
-    // Fetch the user details
     const user = await User.findById(userObjectId).select("name sickLeave paidLeave unpaidLeave availableLeaves");
     if (!user) {
         throw new Error("User not found");
     }
 
-    // Fetch leaves associated with the user
     const leaves = await Leave.find({ userId: userObjectId })
         .populate("userId", "name")
         .sort({ startDate: -1 });
 
-    return { user, leaves }
+    return { user, leaves };
 };
 
 

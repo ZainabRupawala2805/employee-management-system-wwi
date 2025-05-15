@@ -54,7 +54,7 @@ const markCheckout = async ({ userId, ip, location }) => {
 
     attendance.clockOutIP = ip;
 
-    if(location) {
+    if (location) {
         attendance.clockOutLocation = location;
     }
 
@@ -125,39 +125,49 @@ const updateAttendance = async (id, role, data) => {
         throw new CustomError.NotFoundError("Attendance record not found!");
     }
 
-    // Update date if passed
+    // === Update date if passed ===
     if (data.date) {
         attendance.date = new Date(data.date);
     }
 
-    // === Update clocksIn and keep backup of the last value ===
+    // === Update clocksIn with backup if it existed previously ===
     if (data.clocksIn) {
         const newClocksIn = new Date(data.clocksIn);
-        const oldClocksIn = attendance.clocksIn;
 
-        if (oldClocksIn && newClocksIn.getTime() !== oldClocksIn.getTime()) {
-            attendance.previousClocksIn = oldClocksIn; // Always overwrite with last clockIn
+        if (attendance.clocksIn) {
+            const oldClocksIn = new Date(attendance.clocksIn);
+
+            if (newClocksIn.getTime() !== oldClocksIn.getTime()) {
+                attendance.previousClocksIn = oldClocksIn; // Backup existing
+                attendance.clocksIn = newClocksIn;
+            }
+        } else {
+            // No existing clocksIn, set it directly
             attendance.clocksIn = newClocksIn;
         }
     }
 
-    // === Update clocksOut and keep backup of the last value ===
+    // === Update clocksOut with backup if it existed previously ===
     if (data.clocksOut) {
         const newClocksOut = new Date(data.clocksOut);
-        const oldClocksOut = attendance.clocksOut;
 
-        if (oldClocksOut && newClocksOut.getTime() !== oldClocksOut.getTime()) {
-            attendance.previousClocksOut = oldClocksOut; // Always overwrite with last clockOut
+        if (attendance.clocksOut) {
+            const oldClocksOut = new Date(attendance.clocksOut);
+
+            if (newClocksOut.getTime() !== oldClocksOut.getTime()) {
+                attendance.previousClocksOut = oldClocksOut; // Backup existing
+                attendance.clocksOut = newClocksOut;
+            }
+        } else {
+            // No existing clocksOut, set it directly
             attendance.clocksOut = newClocksOut;
         }
     }
 
-    // === Calculate totalHours if both times are available ===
+    // === Calculate totalHours if both clocks exist ===
     if (attendance.clocksIn && attendance.clocksOut) {
-        attendance.totalHours = Math.abs(
-            (attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60)
-        );
-        attendance.totalHours = parseFloat(attendance.totalHours.toFixed(2));
+        const diffInHours = Math.abs(attendance.clocksOut - attendance.clocksIn) / (1000 * 60 * 60);
+        attendance.totalHours = parseFloat(diffInHours.toFixed(2));
     }
 
     // === Set status based on role ===
@@ -165,6 +175,7 @@ const updateAttendance = async (id, role, data) => {
 
     const updatedRecord = await attendance.save();
 
+    // Return all attendance for this user
     const attendanceRecords = await Attendance.find({ userId: updatedRecord.userId })
         .populate("userId", "name")
         .sort({ updatedAt: -1 });
@@ -181,8 +192,8 @@ const deleteAttendanceService = async (id) => {
         throw new CustomError.BadRequestError("User not found!")
     }
     const attendanceRecords = await Attendance.find({ userId: attendance.userId })
-    .populate("userId", "name")
-    .sort({ date: -1 });
+        .populate("userId", "name")
+        .sort({ date: -1 });
 
     return attendanceRecords;
 };
