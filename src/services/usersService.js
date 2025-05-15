@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Roles');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const CustomError = require('../errors');
@@ -73,7 +73,7 @@ const loginUser = async (email, password) => {
     }
 
     if (userWithPswd.status !== "Active") {
-        throw new CustomError.BadRequestError("You are no longer a user of Web Whiz Infosys!")
+        throw new CustomError.SoftError("You are no longer a user of Web Whiz Infosys!")
     }
 
     const isPswdMatch = await bcrypt.compare(password, userWithPswd.password);

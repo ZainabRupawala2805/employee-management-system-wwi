@@ -1,6 +1,6 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
-const Leave = require('../models/Leave');
+const Leave = require('../models/Leave.js');
 const CustomError = require('../errors');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
@@ -137,12 +137,16 @@ const updateAttendance = async (id, role, data) => {
         if (attendance.clocksIn) {
             const oldClocksIn = new Date(attendance.clocksIn);
 
-            if (newClocksIn.getTime() !== oldClocksIn.getTime()) {
-                attendance.previousClocksIn = oldClocksIn; // Backup existing
+            // ✅ Compare only hour and minute
+            const sameClocksInTime =
+                oldClocksIn.getHours() === newClocksIn.getHours() &&
+                oldClocksIn.getMinutes() === newClocksIn.getMinutes();
+
+            if (!sameClocksInTime) {
+                attendance.previousClocksIn = oldClocksIn;
                 attendance.clocksIn = newClocksIn;
             }
         } else {
-            // No existing clocksIn, set it directly
             attendance.clocksIn = newClocksIn;
         }
     }
@@ -154,12 +158,16 @@ const updateAttendance = async (id, role, data) => {
         if (attendance.clocksOut) {
             const oldClocksOut = new Date(attendance.clocksOut);
 
-            if (newClocksOut.getTime() !== oldClocksOut.getTime()) {
-                attendance.previousClocksOut = oldClocksOut; // Backup existing
+            // ✅ Compare only hour and minute
+            const sameClocksOutTime =
+                oldClocksOut.getHours() === newClocksOut.getHours() &&
+                oldClocksOut.getMinutes() === newClocksOut.getMinutes();
+
+            if (!sameClocksOutTime) {
+                attendance.previousClocksOut = oldClocksOut;
                 attendance.clocksOut = newClocksOut;
             }
         } else {
-            // No existing clocksOut, set it directly
             attendance.clocksOut = newClocksOut;
         }
     }
@@ -175,14 +183,12 @@ const updateAttendance = async (id, role, data) => {
 
     const updatedRecord = await attendance.save();
 
-    // Return all attendance for this user
     const attendanceRecords = await Attendance.find({ userId: updatedRecord.userId })
         .populate("userId", "name")
         .sort({ updatedAt: -1 });
 
     return attendanceRecords;
 };
-
 
 const deleteAttendanceService = async (id) => {
     const attendance = await Attendance.findById(id);

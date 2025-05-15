@@ -65,9 +65,9 @@ const login = async (req, res) => {
 
 const getAllUsersList = async (req, res) => {
     try {
-        // if (!req.user) {
-        //     throw new CustomError.BadRequestError("User authentication failed. No user data found.");
-        // }
+        if (!req.user) {
+            throw new CustomError.BadRequestError("User authentication failed. No user data found.");
+        }
         // console.log(req.user);
 
         const { id, role } = req.user;
